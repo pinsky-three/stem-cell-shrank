@@ -18,6 +18,9 @@ entities:
         type: "string"
         required: true
         unique: true
+      - name: "age"
+        type: "int"
+        required: true
 
   - name: "Post"
     table: "posts"

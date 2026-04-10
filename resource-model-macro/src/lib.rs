@@ -5,15 +5,8 @@ mod validate;
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, LitStr};
 
-/// Procedural macro that accepts a YAML string literal conforming to
-/// the resource-model v1 spec and generates entity structs,
-/// create/update DTOs, repository traits, and sqlx PgPool implementations.
-#[proc_macro]
-pub fn resource_model(input: TokenStream) -> TokenStream {
-    let lit = parse_macro_input!(input as LitStr);
-    let yaml_str = lit.value();
-
-    let spec: spec::Spec = match serde_yaml::from_str(&yaml_str) {
+fn process_yaml(yaml_str: &str) -> TokenStream {
+    let spec: spec::Spec = match serde_yaml::from_str(yaml_str) {
         Ok(s) => s,
         Err(e) => {
             let msg = format!("resource_model!: failed to parse YAML: {e}");
@@ -34,4 +27,42 @@ pub fn resource_model(input: TokenStream) -> TokenStream {
     }
 
     codegen::generate(&spec).into()
+}
+
+/// Accepts an inline YAML string literal.
+#[proc_macro]
+pub fn resource_model(input: TokenStream) -> TokenStream {
+    let lit = parse_macro_input!(input as LitStr);
+    process_yaml(&lit.value())
+}
+
+/// Accepts a file path (relative to the crate root) and reads the YAML at compile time.
+#[proc_macro]
+pub fn resource_model_file(input: TokenStream) -> TokenStream {
+    let lit = parse_macro_input!(input as LitStr);
+    let rel_path = lit.value();
+
+    let manifest_dir = match std::env::var("CARGO_MANIFEST_DIR") {
+        Ok(d) => d,
+        Err(_) => {
+            return quote::quote! {
+                compile_error!("resource_model_file!: CARGO_MANIFEST_DIR not set");
+            }
+            .into();
+        }
+    };
+
+    let full_path = std::path::Path::new(&manifest_dir).join(&rel_path);
+    let yaml_str = match std::fs::read_to_string(&full_path) {
+        Ok(s) => s,
+        Err(e) => {
+            let msg = format!(
+                "resource_model_file!: cannot read '{}': {e}",
+                full_path.display()
+            );
+            return quote::quote! { compile_error!(#msg); }.into();
+        }
+    };
+
+    process_yaml(&yaml_str)
 }
