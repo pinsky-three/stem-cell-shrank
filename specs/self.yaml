@@ -1,47 +1,86 @@
-models:
+version: 1
+
+config:
+  visibility: "pub"
+  backend: "postgres"
+
+entities:
   - name: "User"
+    table: "users"
+    id:
+      name: "id"
+      type: "uuid"
     fields:
-      - name: "id"
-        type: "uuid"
-        required: true
       - name: "name"
         type: "string"
         required: true
       - name: "email"
         type: "string"
         required: true
+        unique: true
+
   - name: "Post"
+    table: "posts"
+    id:
+      name: "id"
+      type: "uuid"
     fields:
-      - name: "id"
-        type: "uuid"
-        required: true
       - name: "title"
         type: "string"
         required: true
       - name: "content"
         type: "string"
         required: true
-  - name: "Comment"
-    fields:
-      - name: "id"
+      - name: "user_id"
         type: "uuid"
         required: true
+        references:
+          entity: "User"
+          field: "id"
+
+  - name: "Comment"
+    table: "comments"
+    id:
+      name: "id"
+      type: "uuid"
+    fields:
       - name: "content"
         type: "string"
         required: true
+      - name: "post_id"
+        type: "uuid"
+        required: true
+        references:
+          entity: "Post"
+          field: "id"
+      - name: "author_id"
+        type: "uuid"
+        required: true
+        references:
+          entity: "User"
+          field: "id"
 
-relationships:
+relations:
   - name: "owned_posts"
-    from: "User"
-    to: "Post"
-    type: "one_to_many"
+    kind: "has_many"
+    source: "User"
+    target: "Post"
+    foreign_key: "user_id"
 
   - name: "comments"
-    from: "Post"
-    to: "Comment"
-    type: "one_to_many"
+    kind: "has_many"
+    source: "Post"
+    target: "Comment"
+    foreign_key: "post_id"
 
   - name: "author"
-    from: "Comment"
-    to: "User"
-    type: "one_to_one"
+    kind: "belongs_to"
+    source: "Comment"
+    target: "User"
+    foreign_key: "author_id"
+
+  - name: "post"
+    kind: "belongs_to"
+    source: "Comment"
+    target: "Post"
+    foreign_key: "post_id"
