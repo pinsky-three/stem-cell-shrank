@@ -23,10 +23,16 @@ import Base from "../layouts/Base.astro";
           <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">title</th>
           <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">description</th>
           <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">priority</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">sort_order</th>
           <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">done</th>
           <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">estimated_hours</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">actual_hours</th>
           <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">project_id</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">sprint_id</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">milestone_id</th>
           <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">assignee_id</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">reporter_id</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">category_id</th>
           <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">actions</th>
           </tr>
         </thead>
@@ -46,18 +52,34 @@ import Base from "../layouts/Base.astro";
               class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
         <input type="number" name="priority" placeholder="priority" step="1"
               class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
+        <input type="number" name="sort_order" placeholder="sort_order" step="1"
+              class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
         <label class="flex items-center gap-2 text-sm">
               <input type="checkbox" name="done" class="rounded border-neutral-600 bg-neutral-800 text-indigo-500 focus:ring-indigo-500" />
               done
             </label>
         <input type="number" name="estimated_hours" placeholder="estimated_hours" step="any"
               class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        <input type="number" name="actual_hours" placeholder="actual_hours" step="any"
+              class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
         <input type="text" name="project_id" placeholder="project_id (UUID)"
               pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
               class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
+        <input type="text" name="sprint_id" placeholder="sprint_id (UUID)"
+              pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+              class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        <input type="text" name="milestone_id" placeholder="milestone_id (UUID)"
+              pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+              class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
         <input type="text" name="assignee_id" placeholder="assignee_id (UUID)"
               pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
               class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
+        <input type="text" name="reporter_id" placeholder="reporter_id (UUID)"
+              pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+              class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
+        <input type="text" name="category_id" placeholder="category_id (UUID)"
+              pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+              class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
       </div>
       <div class="flex justify-end gap-3 pt-2">
         <button type="button" id="cancel-btn" class="rounded-lg border border-neutral-700 px-4 py-2 text-sm transition hover:bg-neutral-800">Cancel</button>
@@ -88,14 +110,20 @@ import Base from "../layouts/Base.astro";
         `<td class="px-4 py-3 text-sm text-neutral-300">${r.title??'—'}</td>`+
         `<td class="px-4 py-3 text-sm text-neutral-300">${r.description??'—'}</td>`+
         `<td class="px-4 py-3 text-sm text-neutral-300">${r.priority??'—'}</td>`+
+        `<td class="px-4 py-3 text-sm text-neutral-300">${r.sort_order??'—'}</td>`+
         `<td class="px-4 py-3 text-sm">${r.done?'<span class="text-green-400">yes</span>':'<span class="text-red-400">no</span>'}</td>`+
         `<td class="px-4 py-3 text-sm text-neutral-300">${r.estimated_hours??'—'}</td>`+
+        `<td class="px-4 py-3 text-sm text-neutral-300">${r.actual_hours??'—'}</td>`+
         `<td class="px-4 py-3 font-mono text-xs"><a href="/projects" class="text-indigo-400 hover:underline">${r.project_id?r.project_id.substring(0,8)+'...':'—'}</a></td>`+
-        `<td class="px-4 py-3 font-mono text-xs"><a href="/users" class="text-indigo-400 hover:underline">${r.assignee_id?r.assignee_id.substring(0,8)+'...':'—'}</a></td>` +
+        `<td class="px-4 py-3 font-mono text-xs"><a href="/sprints" class="text-indigo-400 hover:underline">${r.sprint_id?r.sprint_id.substring(0,8)+'...':'—'}</a></td>`+
+        `<td class="px-4 py-3 font-mono text-xs"><a href="/milestones" class="text-indigo-400 hover:underline">${r.milestone_id?r.milestone_id.substring(0,8)+'...':'—'}</a></td>`+
+        `<td class="px-4 py-3 font-mono text-xs"><a href="/users" class="text-indigo-400 hover:underline">${r.assignee_id?r.assignee_id.substring(0,8)+'...':'—'}</a></td>`+
+        `<td class="px-4 py-3 font-mono text-xs"><a href="/users" class="text-indigo-400 hover:underline">${r.reporter_id?r.reporter_id.substring(0,8)+'...':'—'}</a></td>`+
+        `<td class="px-4 py-3 font-mono text-xs"><a href="/categories" class="text-indigo-400 hover:underline">${r.category_id?r.category_id.substring(0,8)+'...':'—'}</a></td>` +
         `<td class="px-4 py-3 text-sm flex gap-3">
           <button onclick="editItem('${r.id}')" class="text-indigo-400 hover:underline">edit</button>
           <button onclick="deleteItem('${r.id}')" class="text-red-400 hover:underline">del</button>
-          <button onclick="showRelation('${r.id}','entries')" class="text-indigo-400 hover:underline">entries</button>
+          <button onclick="showRelation('${r.id}','comments')" class="text-indigo-400 hover:underline">comments</button> <button onclick="showRelation('${r.id}','time_entries')" class="text-indigo-400 hover:underline">time_entries</button> <button onclick="showRelation('${r.id}','line_items')" class="text-indigo-400 hover:underline">line_items</button>
         </td></tr>`;
     }
 
@@ -120,10 +148,16 @@ import Base from "../layouts/Base.astro";
         title: form.elements['title'].value,
         description: form.elements['description'].value || null,
         priority: form.elements['priority'].value ? Number(form.elements['priority'].value) : null,
+        sort_order: form.elements['sort_order'].value ? Number(form.elements['sort_order'].value) : null,
         done: form.elements['done'].checked,
         estimated_hours: form.elements['estimated_hours'].value ? parseFloat(form.elements['estimated_hours'].value) : null,
+        actual_hours: form.elements['actual_hours'].value ? parseFloat(form.elements['actual_hours'].value) : null,
         project_id: form.elements['project_id'].value,
-        assignee_id: form.elements['assignee_id'].value
+        sprint_id: form.elements['sprint_id'].value || null,
+        milestone_id: form.elements['milestone_id'].value || null,
+        assignee_id: form.elements['assignee_id'].value,
+        reporter_id: form.elements['reporter_id'].value,
+        category_id: form.elements['category_id'].value || null
       };
       const url = editingId ? `${API}/${editingId}` : API;
       const method = editingId ? 'PUT' : 'POST';
@@ -144,10 +178,16 @@ import Base from "../layouts/Base.astro";
       form.elements['title'].value = item.title ?? '';
       form.elements['description'].value = item.description ?? '';
       form.elements['priority'].value = item.priority ?? '';
+      form.elements['sort_order'].value = item.sort_order ?? '';
       form.elements['done'].checked = item.done;
       form.elements['estimated_hours'].value = item.estimated_hours ?? '';
+      form.elements['actual_hours'].value = item.actual_hours ?? '';
       form.elements['project_id'].value = item.project_id ?? '';
+      form.elements['sprint_id'].value = item.sprint_id ?? '';
+      form.elements['milestone_id'].value = item.milestone_id ?? '';
       form.elements['assignee_id'].value = item.assignee_id ?? '';
+      form.elements['reporter_id'].value = item.reporter_id ?? '';
+      form.elements['category_id'].value = item.category_id ?? '';
       dialog.showModal();
     };
 
