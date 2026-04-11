@@ -2,6 +2,17 @@
 name = "resource-model-macro"
 version = "0.1.0"
 edition = "2024"
+description = "Proc-macro that generates CRUD structs, sqlx repositories, migrations, and an Axum REST API from a YAML spec"
+license = "MIT"
+repository = "https://github.com/pinsky-three/stem-cell/tree/main/crates/resource-model-macro"
+documentation = "https://docs.rs/resource-model-macro"
+readme = "README.md"
+keywords = ["proc-macro", "crud", "sqlx", "axum", "codegen"]
+categories = [
+    "database",
+    "web-programming",
+    "development-tools::procedural-macro-helpers",
+]
 
 [lib]
 proc-macro = true
