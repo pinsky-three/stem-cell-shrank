@@ -34,7 +34,10 @@ pub fn validate(spec: &Spec) -> Vec<String> {
         }
     }
 
-    let valid_types = ["uuid", "string", "text", "int", "bigint", "float", "bool"];
+    let valid_types = [
+        "uuid", "string", "text", "int", "bigint", "float", "bool",
+        "timestamp", "decimal", "json",
+    ];
 
     for entity in &spec.entities {
         if !valid_types.contains(&entity.id.ty.as_str()) {

@@ -16,6 +16,8 @@ pub struct Config {
     pub backend: String,
     #[serde(default)]
     pub api: bool,
+    #[serde(default)]
+    pub soft_delete: bool,
 }
 
 #[derive(Debug, Deserialize)]

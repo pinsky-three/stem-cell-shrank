@@ -35,7 +35,7 @@ RUN touch crates/runtime/src/main.rs crates/resource-model-macro/src/lib.rs \
 FROM debian:bookworm-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --no-log-init app
 
@@ -52,6 +52,6 @@ ENV SERVE_DIR=public PORT=4200 \
 EXPOSE 4200
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s \
-    CMD curl -f http://localhost:4200/ || exit 1
+    CMD curl -sf http://localhost:4200/healthz || exit 1
 
 ENTRYPOINT ["/app/server"]
