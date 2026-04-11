@@ -1,6 +1,5 @@
 /target
 /public
-frontend/src/pages/*.astro
 .env
 .astro
 .DS_Store

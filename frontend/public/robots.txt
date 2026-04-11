@@ -1,10 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /audit
-Disallow: /*/audit
-Disallow: /*/dashboard
-Disallow: /*/report
-Disallow: /*/review
-Disallow: /*/remediate
 
 Sitemap: https://stemcell.pinsky.studio/sitemap.xml
