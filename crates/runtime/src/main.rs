@@ -1,6 +1,11 @@
 resource_model_macro::resource_model_file!("specs/self.yaml");
 
+mod auth;
+mod email;
+mod migrate_auth;
+
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::routing::get;
 use axum::Router;
@@ -11,6 +16,10 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use utoipa_scalar::{Scalar, Servable};
+
+use auth::AppState;
+use auth::config::{AuthConfig, SmtpConfig};
+use email::EmailService;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,8 +33,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = sqlx::PgPool::connect(&db_url).await?;
 
+    migrate_auth::migrate_auth(&pool).await?;
+    tracing::info!("auth migrations applied");
+
     migrate(&pool).await?;
-    tracing::info!("migrations applied");
+    tracing::info!("resource migrations applied");
+
+    let auth_config = AuthConfig::from_env();
+
+    let email_service = match SmtpConfig::from_env() {
+        Some(smtp_config) => match EmailService::new(&smtp_config) {
+            Ok(svc) => {
+                tracing::info!(host = %smtp_config.host, "SMTP email service configured");
+                Some(svc)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "failed to initialize SMTP — email disabled");
+                None
+            }
+        },
+        None => {
+            tracing::info!("SMTP not configured — email disabled");
+            None
+        }
+    };
+
+    if auth_config.github.is_some() {
+        tracing::info!("GitHub OAuth configured");
+    }
+    if auth_config.google.is_some() {
+        tracing::info!("Google OAuth configured");
+    }
+
+    let state = AppState {
+        pool: pool.clone(),
+        auth_config: Arc::new(auth_config),
+        email: email_service,
+    };
 
     let port: u16 = std::env::var("PORT")
         .unwrap_or_else(|_| "4200".into())
@@ -34,9 +78,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let serve_dir = std::env::var("SERVE_DIR").unwrap_or_else(|_| "public".into());
 
+    // Generated CRUD API uses PgPool state — resolve it before merging
     let (api, openapi) = resource_api::router().split_for_parts();
+    let api = api
+        .layer(axum::middleware::from_fn(resource_api::api_key_auth))
+        .with_state(pool.clone());
 
-    let api = api.layer(axum::middleware::from_fn(resource_api::api_key_auth));
+    // Auth routes use AppState — resolve it before merging
+    let auth_routes = auth::router().with_state(state);
+
+    // Health endpoints use PgPool state
+    let health_routes = Router::new()
+        .route("/healthz", get(resource_api::healthz))
+        .route("/readyz", get(resource_api::readyz))
+        .with_state(pool);
 
     let cors = if let Ok(origins) = std::env::var("ALLOWED_ORIGINS") {
         let parsed: Vec<axum::http::HeaderValue> = origins
@@ -56,15 +111,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Router::new()
         .merge(api)
+        .merge(auth_routes)
+        .merge(health_routes)
         .merge(Scalar::with_url("/api/docs", openapi))
-        .route("/healthz", get(resource_api::healthz))
-        .route("/readyz", get(resource_api::readyz))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(PropagateRequestIdLayer::x_request_id())
-        .fallback_service(ServeDir::new(&serve_dir))
-        .with_state(pool);
+        .fallback_service(ServeDir::new(&serve_dir));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await?;

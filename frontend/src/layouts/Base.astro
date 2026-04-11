@@ -29,6 +29,42 @@ const {
     <meta name="theme-color" content="#0a0a0b" />
   </head>
   <body class="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
+    <nav id="auth-nav" class="border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+        <a href="/" class="text-sm font-bold tracking-tight text-neutral-100 hover:text-indigo-400 transition">Stem Cell</a>
+        <div id="auth-nav-links" class="flex items-center gap-4 text-sm">
+          <a href="/login" id="nav-login" class="hidden text-neutral-400 hover:text-neutral-100 transition">Sign in</a>
+          <span id="nav-user" class="hidden text-neutral-400"></span>
+          <button id="nav-logout" class="hidden rounded border border-neutral-700 px-3 py-1 text-neutral-400 transition hover:border-red-600 hover:text-red-400">Sign out</button>
+        </div>
+      </div>
+    </nav>
     <slot />
+    <script>
+      (async () => {
+        const loginLink = document.getElementById('nav-login');
+        const userSpan = document.getElementById('nav-user');
+        const logoutBtn = document.getElementById('nav-logout');
+
+        try {
+          const res = await fetch('/auth/me');
+          if (res.ok) {
+            const { account } = await res.json();
+            userSpan.textContent = account.email;
+            userSpan.classList.remove('hidden');
+            logoutBtn.classList.remove('hidden');
+          } else {
+            loginLink.classList.remove('hidden');
+          }
+        } catch {
+          loginLink.classList.remove('hidden');
+        }
+
+        logoutBtn.addEventListener('click', async () => {
+          await fetch('/auth/logout', { method: 'POST' });
+          window.location.href = '/login';
+        });
+      })();
+    </script>
   </body>
 </html>
