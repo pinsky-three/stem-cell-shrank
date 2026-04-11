@@ -646,8 +646,12 @@ fn generate_filter_arms(fields: &[FieldSpec]) -> Vec<TokenStream> {
                             qb.push_bind(v.clone());
                         }
                         if let Some(v) = filters.get(#like_key) {
+                            let escaped = v
+                                .replace('\\', "\\\\")
+                                .replace('%', "\\%")
+                                .replace('_', "\\_");
                             qb.push(#like_sql);
-                            qb.push_bind(format!("%{v}%"));
+                            qb.push_bind(format!("%{escaped}%"));
                         }
                     });
                 }
@@ -715,8 +719,12 @@ fn generate_filter_arms(fields: &[FieldSpec]) -> Vec<TokenStream> {
                     let cast_sql = format!(" AND {}::text ILIKE ", f.name);
                     arms.push(quote! {
                         if let Some(v) = filters.get(#like_key) {
+                            let escaped = v
+                                .replace('\\', "\\\\")
+                                .replace('%', "\\%")
+                                .replace('_', "\\_");
                             qb.push(#cast_sql);
-                            qb.push_bind(format!("%{v}%"));
+                            qb.push_bind(format!("%{escaped}%"));
                         }
                     });
                 }

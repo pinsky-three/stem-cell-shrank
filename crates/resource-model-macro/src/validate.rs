@@ -1,6 +1,14 @@
 use crate::spec::Spec;
 use std::collections::HashSet;
 
+/// Must match `^[A-Za-z_][A-Za-z0-9_]*$` — safe to splice into SQL identifiers.
+fn is_safe_identifier(s: &str) -> bool {
+    !s.is_empty()
+        && s.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_')
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
 pub fn validate(spec: &Spec) -> Vec<String> {
     let mut errors = Vec::new();
 
@@ -32,6 +40,18 @@ pub fn validate(spec: &Spec) -> Vec<String> {
         if !table_names.insert(&entity.table) {
             errors.push(format!("duplicate table name '{}'", entity.table));
         }
+        if !is_safe_identifier(&entity.name) {
+            errors.push(format!(
+                "'{}': entity name must be alphanumeric/underscore (no SQL metacharacters)",
+                entity.name
+            ));
+        }
+        if !is_safe_identifier(&entity.table) {
+            errors.push(format!(
+                "'{}': table name must be alphanumeric/underscore (no SQL metacharacters)",
+                entity.table
+            ));
+        }
     }
 
     let valid_types = [
@@ -40,6 +60,12 @@ pub fn validate(spec: &Spec) -> Vec<String> {
     ];
 
     for entity in &spec.entities {
+        if !is_safe_identifier(&entity.id.name) {
+            errors.push(format!(
+                "{}.{}: id name must be alphanumeric/underscore",
+                entity.name, entity.id.name
+            ));
+        }
         if !valid_types.contains(&entity.id.ty.as_str()) {
             errors.push(format!(
                 "{}.{}: unsupported type '{}'",
@@ -54,6 +80,12 @@ pub fn validate(spec: &Spec) -> Vec<String> {
             if !field_names.insert(&field.name) {
                 errors.push(format!(
                     "{}: duplicate field name '{}'",
+                    entity.name, field.name
+                ));
+            }
+            if !is_safe_identifier(&field.name) {
+                errors.push(format!(
+                    "{}.{}: field name must be alphanumeric/underscore",
                     entity.name, field.name
                 ));
             }
@@ -406,5 +438,50 @@ relations:
         assert!(errs
             .iter()
             .any(|e| e.contains("foreign key 'user_id' not found")));
+    }
+
+    #[test]
+    fn unsafe_table_name_rejected() {
+        let yaml = r#"
+version: 1
+config: { visibility: "pub", backend: "postgres" }
+entities:
+  - name: "User"
+    table: "users; DROP TABLE--"
+    id: { name: "id", type: "uuid" }
+    fields: []
+relations: []
+"#;
+        let errs = validate(&parse(yaml));
+        assert!(errs.iter().any(|e| e.contains("SQL metacharacters")));
+    }
+
+    #[test]
+    fn unsafe_field_name_rejected() {
+        let yaml = r#"
+version: 1
+config: { visibility: "pub", backend: "postgres" }
+entities:
+  - name: "User"
+    table: "users"
+    id: { name: "id", type: "uuid" }
+    fields:
+      - { name: "name' OR '1'='1", type: "string", required: true }
+relations: []
+"#;
+        let errs = validate(&parse(yaml));
+        assert!(errs.iter().any(|e| e.contains("alphanumeric/underscore")));
+    }
+
+    #[test]
+    fn safe_identifier_passes() {
+        assert!(super::is_safe_identifier("users"));
+        assert!(super::is_safe_identifier("_private"));
+        assert!(super::is_safe_identifier("User2"));
+        assert!(!super::is_safe_identifier(""));
+        assert!(!super::is_safe_identifier("2bad"));
+        assert!(!super::is_safe_identifier("no spaces"));
+        assert!(!super::is_safe_identifier("semi;colon"));
+        assert!(!super::is_safe_identifier("drop--"));
     }
 }
