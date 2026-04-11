@@ -28,7 +28,7 @@ RUN cd frontend && npm ci && npm run build
 
 # Real source (SKIP_FRONTEND since we already built above)
 COPY crates/ crates/
-RUN touch crates/runtime/src/main.rs \
+RUN touch crates/runtime/src/main.rs crates/resource-model-macro/src/lib.rs \
     && SKIP_FRONTEND=1 cargo build --release -p stem-cell
 
 # ── Stage 2: runtime ─────────────────────────────────────────────
