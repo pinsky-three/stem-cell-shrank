@@ -7,388 +7,265 @@ config:
   soft_delete: true
 
 # ────────────────────────────────────────────────────────────────
-# 16 entities — SaaS project-management + invoicing platform
-# Exercises: all 7 field types, optional FKs, multiple FKs to the
-# same entity, unique constraints, deep relation chains, wide
-# tables (10+ fields), and narrow ones (4 fields).
+# 12 entities — AI app-builder SaaS platform (Lovable clone)
+# Domains: tenancy, billing, builder, build pipeline, deployment.
 # Entity order respects FK dependency graph.
 # ────────────────────────────────────────────────────────────────
 
 entities:
 
-  # ── Tenant ──────────────────────────────────────────────────
+  # ── Tenancy & Auth ────────────────────────────────────────────
+
   - name: "Organization"
     table: "organizations"
     id: { name: "id", type: "uuid" }
     fields:
       - { name: "name",       type: "string", required: true }
       - { name: "slug",       type: "string", required: true, unique: true }
-      - { name: "domain",     type: "string", required: false }
-      - { name: "plan",       type: "string", required: true }
-      - { name: "seat_limit", type: "int",    required: true }
+      - { name: "avatar_url", type: "string", required: false }
       - { name: "active",     type: "bool",   required: true }
 
-  # ── Org structure ───────────────────────────────────────────
-  - name: "Department"
-    table: "departments"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "name",        type: "string", required: true }
-      - { name: "description", type: "text",   required: false }
-      - { name: "cost_center", type: "string", required: false }
-      - { name: "active",      type: "bool",   required: true }
-      - name: "org_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Organization", field: "id" }
-
-  - name: "Role"
-    table: "roles"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "name",        type: "string", required: true }
-      - { name: "description", type: "text",   required: false }
-      - { name: "level",       type: "int",    required: true }
-      - name: "org_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Organization", field: "id" }
-
-  # ── People ──────────────────────────────────────────────────
   - name: "User"
     table: "users"
     id: { name: "id", type: "uuid" }
     fields:
-      - { name: "name",        type: "string", required: true }
-      - { name: "email",       type: "string", required: true, unique: true }
-      - { name: "title",       type: "string", required: false }
-      - { name: "phone",       type: "string", required: false }
-      - { name: "hourly_rate", type: "float",  required: false }
-      - { name: "active",      type: "bool",   required: true }
-      - { name: "bio",         type: "text",   required: false }
-      - name: "org_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Organization", field: "id" }
-      - name: "department_id"
-        type: "uuid"
-        required: false
-        references: { entity: "Department", field: "id" }
-      - name: "role_id"
-        type: "uuid"
-        required: false
-        references: { entity: "Role", field: "id" }
+      - { name: "name",          type: "string", required: true }
+      - { name: "email",         type: "string", required: true, unique: true }
+      - { name: "avatar_url",    type: "string", required: false }
+      - { name: "auth_provider", type: "string", required: true }
+      - { name: "active",        type: "bool",   required: true }
 
-  # ── Clients & billing ──────────────────────────────────────
-  - name: "Client"
-    table: "clients"
+  - name: "Membership"
+    table: "memberships"
     id: { name: "id", type: "uuid" }
     fields:
-      - { name: "name",              type: "string", required: true }
-      - { name: "email",             type: "string", required: false }
-      - { name: "phone",             type: "string", required: false }
-      - { name: "website",           type: "string", required: false }
-      - { name: "tax_id",            type: "string", required: false }
-      - { name: "payment_terms_days", type: "int",   required: true }
-      - { name: "credit_limit_cents", type: "bigint", required: false }
-      - { name: "active",            type: "bool",   required: true }
-      - { name: "notes",             type: "text",   required: false }
+      - { name: "role",   type: "string", required: true }
+      - { name: "active", type: "bool",   required: true }
       - name: "org_id"
         type: "uuid"
         required: true
         references: { entity: "Organization", field: "id" }
+      - name: "user_id"
+        type: "uuid"
+        required: true
+        references: { entity: "User", field: "id" }
 
-  # ── Project management ─────────────────────────────────────
+  # ── Billing ───────────────────────────────────────────────────
+
+  - name: "Plan"
+    table: "plans"
+    id: { name: "id", type: "uuid" }
+    fields:
+      - { name: "name",          type: "string", required: true }
+      - { name: "slug",          type: "string", required: true, unique: true }
+      - { name: "description",   type: "text",   required: false }
+      - { name: "price_cents",   type: "bigint", required: true }
+      - { name: "currency",      type: "string", required: true }
+      - { name: "build_limit",   type: "int",    required: true }
+      - { name: "project_limit", type: "int",    required: true }
+      - { name: "seat_limit",    type: "int",    required: true }
+      - { name: "active",        type: "bool",   required: true }
+
+  - name: "Subscription"
+    table: "subscriptions"
+    id: { name: "id", type: "uuid" }
+    fields:
+      - { name: "status",                   type: "string", required: true }
+      - { name: "provider_subscription_id", type: "string", required: true }
+      - { name: "active",                   type: "bool",   required: true }
+      - name: "org_id"
+        type: "uuid"
+        required: true
+        references: { entity: "Organization", field: "id" }
+      - name: "plan_id"
+        type: "uuid"
+        required: true
+        references: { entity: "Plan", field: "id" }
+
+  # ── Core Builder ──────────────────────────────────────────────
+
   - name: "Project"
     table: "projects"
     id: { name: "id", type: "uuid" }
     fields:
-      - { name: "name",         type: "string", required: true }
-      - { name: "code",         type: "string", required: true, unique: true }
-      - { name: "description",  type: "text",   required: false }
-      - { name: "budget_cents", type: "bigint", required: false }
-      - { name: "hourly_rate",  type: "float",  required: false }
-      - { name: "active",       type: "bool",   required: true }
-      - { name: "archived",     type: "bool",   required: true }
-      - name: "org_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Organization", field: "id" }
-      - name: "client_id"
-        type: "uuid"
-        required: false
-        references: { entity: "Client", field: "id" }
-      - name: "lead_id"
-        type: "uuid"
-        required: true
-        references: { entity: "User", field: "id" }
-
-  - name: "Milestone"
-    table: "milestones"
-    id: { name: "id", type: "uuid" }
-    fields:
       - { name: "name",        type: "string", required: true }
+      - { name: "slug",        type: "string", required: true, unique: true }
       - { name: "description", type: "text",   required: false }
-      - { name: "sort_order",  type: "int",    required: true }
-      - { name: "done",        type: "bool",   required: true }
-      - name: "project_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Project", field: "id" }
-
-  - name: "Sprint"
-    table: "sprints"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "name",           type: "string", required: true }
-      - { name: "goal",           type: "text",   required: false }
-      - { name: "sprint_number",  type: "int",    required: true }
-      - { name: "capacity_hours", type: "float",  required: false }
-      - { name: "active",         type: "bool",   required: true }
-      - name: "project_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Project", field: "id" }
-
-  - name: "Category"
-    table: "categories"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "name",  type: "string", required: true }
-      - { name: "color", type: "string", required: true }
+      - { name: "status",      type: "string", required: true }
+      - { name: "framework",   type: "string", required: false }
+      - { name: "visibility",  type: "string", required: true }
+      - { name: "active",      type: "bool",   required: true }
       - name: "org_id"
         type: "uuid"
         required: true
         references: { entity: "Organization", field: "id" }
+      - name: "creator_id"
+        type: "uuid"
+        required: true
+        references: { entity: "User", field: "id" }
 
-  # ── Work items ──────────────────────────────────────────────
-  # Wide entity: 11 fields, 6 FKs (2× to User), 2 optional FKs
-  - name: "Task"
-    table: "tasks"
+  - name: "Conversation"
+    table: "conversations"
     id: { name: "id", type: "uuid" }
     fields:
-      - { name: "title",           type: "string", required: true }
-      - { name: "description",     type: "text",   required: false }
-      - { name: "priority",        type: "int",    required: true }
-      - { name: "sort_order",      type: "int",    required: true }
-      - { name: "done",            type: "bool",   required: true }
-      - { name: "estimated_hours", type: "float",  required: false }
-      - { name: "actual_hours",    type: "float",  required: false }
+      - { name: "title",  type: "string", required: true }
+      - { name: "active", type: "bool",   required: true }
       - name: "project_id"
         type: "uuid"
         required: true
         references: { entity: "Project", field: "id" }
-      - name: "sprint_id"
-        type: "uuid"
-        required: false
-        references: { entity: "Sprint", field: "id" }
-      - name: "milestone_id"
-        type: "uuid"
-        required: false
-        references: { entity: "Milestone", field: "id" }
-      - name: "assignee_id"
-        type: "uuid"
-        required: true
-        references: { entity: "User", field: "id" }
-      - name: "reporter_id"
-        type: "uuid"
-        required: true
-        references: { entity: "User", field: "id" }
-      - name: "category_id"
-        type: "uuid"
-        required: false
-        references: { entity: "Category", field: "id" }
 
-  - name: "Comment"
-    table: "comments"
+  - name: "Message"
+    table: "messages"
     id: { name: "id", type: "uuid" }
     fields:
-      - { name: "body",    type: "text", required: true }
-      - { name: "edited",  type: "bool", required: true }
-      - name: "task_id"
+      - { name: "role",           type: "string", required: true }
+      - { name: "content",        type: "text",   required: true }
+      - { name: "sort_order",     type: "int",    required: true }
+      - { name: "has_attachment", type: "bool",   required: true }
+      - name: "conversation_id"
         type: "uuid"
         required: true
-        references: { entity: "Task", field: "id" }
+        references: { entity: "Conversation", field: "id" }
       - name: "author_id"
         type: "uuid"
         required: true
         references: { entity: "User", field: "id" }
 
-  - name: "TimeEntry"
-    table: "time_entries"
+  # ── Build Pipeline ────────────────────────────────────────────
+
+  - name: "BuildJob"
+    table: "build_jobs"
     id: { name: "id", type: "uuid" }
     fields:
-      - { name: "description",  type: "text",   required: false }
-      - { name: "hours",        type: "float",  required: true }
-      - { name: "billable",     type: "bool",   required: true }
-      - { name: "rate_cents",   type: "bigint", required: false }
-      - name: "task_id"
+      - { name: "status",         type: "string", required: true }
+      - { name: "prompt_summary", type: "string", required: true }
+      - { name: "model",          type: "string", required: true }
+      - { name: "tokens_used",    type: "bigint", required: true }
+      - { name: "error_message",  type: "string", required: true }
+      - { name: "duration_ms",    type: "bigint", required: true }
+      - name: "project_id"
         type: "uuid"
         required: true
-        references: { entity: "Task", field: "id" }
-      - name: "user_id"
+        references: { entity: "Project", field: "id" }
+      - name: "message_id"
         type: "uuid"
         required: true
-        references: { entity: "User", field: "id" }
+        references: { entity: "Message", field: "id" }
+
+  - name: "Artifact"
+    table: "artifacts"
+    id: { name: "id", type: "uuid" }
+    fields:
+      - { name: "file_path",     type: "string", required: true }
+      - { name: "content_hash",  type: "string", required: true }
+      - { name: "size_bytes",    type: "bigint", required: true }
+      - { name: "language",      type: "string", required: false }
+      - name: "build_job_id"
+        type: "uuid"
+        required: true
+        references: { entity: "BuildJob", field: "id" }
       - name: "project_id"
         type: "uuid"
         required: true
         references: { entity: "Project", field: "id" }
 
-  # ── Contracts & invoicing ───────────────────────────────────
-  - name: "Contract"
-    table: "contracts"
+  # ── Deployment & Usage ────────────────────────────────────────
+
+  - name: "Deployment"
+    table: "deployments"
     id: { name: "id", type: "uuid" }
     fields:
-      - { name: "title",         type: "string", required: true }
-      - { name: "description",   type: "text",   required: false }
-      - { name: "value_cents",   type: "bigint", required: true }
-      - { name: "currency",      type: "string", required: true }
-      - { name: "active",        type: "bool",   required: true }
+      - { name: "status",    type: "string", required: true }
+      - { name: "url",       type: "string", required: true }
+      - { name: "subdomain", type: "string", required: true, unique: true }
+      - { name: "provider",  type: "string", required: true }
+      - { name: "active",    type: "bool",   required: true }
+      - name: "project_id"
+        type: "uuid"
+        required: true
+        references: { entity: "Project", field: "id" }
+      - name: "build_job_id"
+        type: "uuid"
+        required: true
+        references: { entity: "BuildJob", field: "id" }
+
+  - name: "UsageRecord"
+    table: "usage_records"
+    id: { name: "id", type: "uuid" }
+    fields:
+      - { name: "kind",        type: "string", required: true }
+      - { name: "quantity",    type: "bigint", required: true }
+      - { name: "description", type: "string", required: false }
       - name: "org_id"
         type: "uuid"
         required: true
         references: { entity: "Organization", field: "id" }
-      - name: "client_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Client", field: "id" }
-
-  - name: "Invoice"
-    table: "invoices"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "invoice_number", type: "string", required: true, unique: true }
-      - { name: "status",         type: "string", required: true }
-      - { name: "subtotal_cents", type: "bigint", required: true }
-      - { name: "tax_cents",      type: "bigint", required: true }
-      - { name: "total_cents",    type: "bigint", required: true }
-      - { name: "currency",       type: "string", required: true }
-      - { name: "notes",          type: "text",   required: false }
-      - { name: "paid",           type: "bool",   required: true }
-      - name: "contract_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Contract", field: "id" }
-
-  - name: "LineItem"
-    table: "line_items"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "description",  type: "string", required: true }
-      - { name: "quantity",     type: "int",    required: true }
-      - { name: "unit_cents",   type: "bigint", required: true }
-      - { name: "amount_cents", type: "bigint", required: true }
-      - name: "invoice_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Invoice", field: "id" }
-      - name: "task_id"
+      - name: "project_id"
         type: "uuid"
         required: false
-        references: { entity: "Task", field: "id" }
-
-  - name: "Payment"
-    table: "payments"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "amount_cents",    type: "bigint", required: true }
-      - { name: "currency",        type: "string", required: true }
-      - { name: "method",          type: "string", required: true }
-      - { name: "reference_code",  type: "string", required: false }
-      - { name: "notes",           type: "text",   required: false }
-      - name: "invoice_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Invoice", field: "id" }
+        references: { entity: "Project", field: "id" }
 
 # ────────────────────────────────────────────────────────────────
-# Relations — 38 total (has_many + belongs_to)
+# Relations
 # ────────────────────────────────────────────────────────────────
 
 relations:
 
-  # ── Organization (hub) ──────────────────────────────────────
-  - { name: "departments",  kind: "has_many", source: "Organization", target: "Department", foreign_key: "org_id" }
-  - { name: "roles",        kind: "has_many", source: "Organization", target: "Role",       foreign_key: "org_id" }
-  - { name: "members",      kind: "has_many", source: "Organization", target: "User",       foreign_key: "org_id" }
-  - { name: "clients",      kind: "has_many", source: "Organization", target: "Client",     foreign_key: "org_id" }
-  - { name: "projects",     kind: "has_many", source: "Organization", target: "Project",    foreign_key: "org_id" }
-  - { name: "categories",   kind: "has_many", source: "Organization", target: "Category",   foreign_key: "org_id" }
-  - { name: "contracts",    kind: "has_many", source: "Organization", target: "Contract",   foreign_key: "org_id" }
+  # ── Organization (hub) ────────────────────────────────────────
+  - { name: "memberships",    kind: "has_many", source: "Organization", target: "Membership",  foreign_key: "org_id" }
+  - { name: "projects",       kind: "has_many", source: "Organization", target: "Project",     foreign_key: "org_id" }
+  - { name: "subscriptions",  kind: "has_many", source: "Organization", target: "Subscription", foreign_key: "org_id" }
+  - { name: "usage_records",  kind: "has_many", source: "Organization", target: "UsageRecord", foreign_key: "org_id" }
 
-  # ── Department ──────────────────────────────────────────────
-  - { name: "org",     kind: "belongs_to", source: "Department", target: "Organization", foreign_key: "org_id" }
-  - { name: "members", kind: "has_many",   source: "Department", target: "User",         foreign_key: "department_id" }
+  # ── User ──────────────────────────────────────────────────────
+  - { name: "memberships",       kind: "has_many", source: "User", target: "Membership", foreign_key: "user_id" }
+  - { name: "created_projects",  kind: "has_many", source: "User", target: "Project",    foreign_key: "creator_id" }
+  - { name: "messages",          kind: "has_many", source: "User", target: "Message",    foreign_key: "author_id" }
 
-  # ── Role ────────────────────────────────────────────────────
-  - { name: "org",     kind: "belongs_to", source: "Role", target: "Organization", foreign_key: "org_id" }
-  - { name: "members", kind: "has_many",   source: "Role", target: "User",         foreign_key: "role_id" }
+  # ── Membership ────────────────────────────────────────────────
+  - { name: "org",  kind: "belongs_to", source: "Membership", target: "Organization", foreign_key: "org_id" }
+  - { name: "user", kind: "belongs_to", source: "Membership", target: "User",         foreign_key: "user_id" }
 
-  # ── User (multi-FK target) ─────────────────────────────────
-  - { name: "organization",   kind: "belongs_to", source: "User", target: "Organization", foreign_key: "org_id" }
-  - { name: "department",     kind: "belongs_to", source: "User", target: "Department",   foreign_key: "department_id" }
-  - { name: "role",           kind: "belongs_to", source: "User", target: "Role",         foreign_key: "role_id" }
-  - { name: "led_projects",   kind: "has_many",   source: "User", target: "Project",      foreign_key: "lead_id" }
-  - { name: "assigned_tasks", kind: "has_many",   source: "User", target: "Task",         foreign_key: "assignee_id" }
-  - { name: "reported_tasks", kind: "has_many",   source: "User", target: "Task",         foreign_key: "reporter_id" }
-  - { name: "comments",       kind: "has_many",   source: "User", target: "Comment",      foreign_key: "author_id" }
-  - { name: "time_entries",   kind: "has_many",   source: "User", target: "TimeEntry",    foreign_key: "user_id" }
+  # ── Plan ──────────────────────────────────────────────────────
+  - { name: "subscriptions", kind: "has_many", source: "Plan", target: "Subscription", foreign_key: "plan_id" }
 
-  # ── Client ──────────────────────────────────────────────────
-  - { name: "org",       kind: "belongs_to", source: "Client", target: "Organization", foreign_key: "org_id" }
-  - { name: "projects",  kind: "has_many",   source: "Client", target: "Project",      foreign_key: "client_id" }
-  - { name: "contracts", kind: "has_many",   source: "Client", target: "Contract",     foreign_key: "client_id" }
+  # ── Subscription ──────────────────────────────────────────────
+  - { name: "org",  kind: "belongs_to", source: "Subscription", target: "Organization", foreign_key: "org_id" }
+  - { name: "plan", kind: "belongs_to", source: "Subscription", target: "Plan",         foreign_key: "plan_id" }
 
-  # ── Project ─────────────────────────────────────────────────
-  - { name: "org",          kind: "belongs_to", source: "Project", target: "Organization", foreign_key: "org_id" }
-  - { name: "client",       kind: "belongs_to", source: "Project", target: "Client",       foreign_key: "client_id" }
-  - { name: "lead",         kind: "belongs_to", source: "Project", target: "User",         foreign_key: "lead_id" }
-  - { name: "milestones",   kind: "has_many",   source: "Project", target: "Milestone",    foreign_key: "project_id" }
-  - { name: "sprints",      kind: "has_many",   source: "Project", target: "Sprint",       foreign_key: "project_id" }
-  - { name: "tasks",        kind: "has_many",   source: "Project", target: "Task",         foreign_key: "project_id" }
-  - { name: "time_entries", kind: "has_many",   source: "Project", target: "TimeEntry",    foreign_key: "project_id" }
+  # ── Project ───────────────────────────────────────────────────
+  - { name: "org",           kind: "belongs_to", source: "Project", target: "Organization", foreign_key: "org_id" }
+  - { name: "creator",      kind: "belongs_to", source: "Project", target: "User",         foreign_key: "creator_id" }
+  - { name: "conversations", kind: "has_many",  source: "Project", target: "Conversation", foreign_key: "project_id" }
+  - { name: "build_jobs",   kind: "has_many",   source: "Project", target: "BuildJob",     foreign_key: "project_id" }
+  - { name: "artifacts",    kind: "has_many",   source: "Project", target: "Artifact",     foreign_key: "project_id" }
+  - { name: "deployments",  kind: "has_many",   source: "Project", target: "Deployment",   foreign_key: "project_id" }
+  - { name: "usage_records", kind: "has_many",  source: "Project", target: "UsageRecord",  foreign_key: "project_id" }
 
-  # ── Milestone / Sprint ──────────────────────────────────────
-  - { name: "project", kind: "belongs_to", source: "Milestone", target: "Project", foreign_key: "project_id" }
-  - { name: "tasks",   kind: "has_many",   source: "Milestone", target: "Task",    foreign_key: "milestone_id" }
+  # ── Conversation ──────────────────────────────────────────────
+  - { name: "project",  kind: "belongs_to", source: "Conversation", target: "Project", foreign_key: "project_id" }
+  - { name: "messages", kind: "has_many",   source: "Conversation", target: "Message",  foreign_key: "conversation_id" }
 
-  - { name: "project", kind: "belongs_to", source: "Sprint", target: "Project", foreign_key: "project_id" }
-  - { name: "tasks",   kind: "has_many",   source: "Sprint", target: "Task",    foreign_key: "sprint_id" }
+  # ── Message ───────────────────────────────────────────────────
+  - { name: "conversation", kind: "belongs_to", source: "Message", target: "Conversation", foreign_key: "conversation_id" }
+  - { name: "author",       kind: "belongs_to", source: "Message", target: "User",         foreign_key: "author_id" }
+  - { name: "build_jobs",   kind: "has_many",   source: "Message", target: "BuildJob",     foreign_key: "message_id" }
 
-  # ── Task (deep chain hub) ──────────────────────────────────
-  - { name: "project",      kind: "belongs_to", source: "Task", target: "Project",   foreign_key: "project_id" }
-  - { name: "sprint",       kind: "belongs_to", source: "Task", target: "Sprint",    foreign_key: "sprint_id" }
-  - { name: "milestone",    kind: "belongs_to", source: "Task", target: "Milestone", foreign_key: "milestone_id" }
-  - { name: "assignee",     kind: "belongs_to", source: "Task", target: "User",      foreign_key: "assignee_id" }
-  - { name: "reporter",     kind: "belongs_to", source: "Task", target: "User",      foreign_key: "reporter_id" }
-  - { name: "category",     kind: "belongs_to", source: "Task", target: "Category",  foreign_key: "category_id" }
-  - { name: "comments",     kind: "has_many",   source: "Task", target: "Comment",   foreign_key: "task_id" }
-  - { name: "time_entries", kind: "has_many",   source: "Task", target: "TimeEntry", foreign_key: "task_id" }
-  - { name: "line_items",   kind: "has_many",   source: "Task", target: "LineItem",  foreign_key: "task_id" }
+  # ── BuildJob ──────────────────────────────────────────────────
+  - { name: "project",     kind: "belongs_to", source: "BuildJob", target: "Project",  foreign_key: "project_id" }
+  - { name: "message",     kind: "belongs_to", source: "BuildJob", target: "Message",  foreign_key: "message_id" }
+  - { name: "artifacts",   kind: "has_many",   source: "BuildJob", target: "Artifact", foreign_key: "build_job_id" }
+  - { name: "deployments", kind: "has_many",   source: "BuildJob", target: "Deployment", foreign_key: "build_job_id" }
 
-  # ── Comment ─────────────────────────────────────────────────
-  - { name: "task",   kind: "belongs_to", source: "Comment", target: "Task", foreign_key: "task_id" }
-  - { name: "author", kind: "belongs_to", source: "Comment", target: "User", foreign_key: "author_id" }
+  # ── Artifact ──────────────────────────────────────────────────
+  - { name: "build_job", kind: "belongs_to", source: "Artifact", target: "BuildJob", foreign_key: "build_job_id" }
+  - { name: "project",   kind: "belongs_to", source: "Artifact", target: "Project",  foreign_key: "project_id" }
 
-  # ── TimeEntry ───────────────────────────────────────────────
-  - { name: "task",    kind: "belongs_to", source: "TimeEntry", target: "Task",    foreign_key: "task_id" }
-  - { name: "worker",  kind: "belongs_to", source: "TimeEntry", target: "User",    foreign_key: "user_id" }
-  - { name: "project", kind: "belongs_to", source: "TimeEntry", target: "Project", foreign_key: "project_id" }
+  # ── Deployment ────────────────────────────────────────────────
+  - { name: "project",   kind: "belongs_to", source: "Deployment", target: "Project",  foreign_key: "project_id" }
+  - { name: "build_job", kind: "belongs_to", source: "Deployment", target: "BuildJob", foreign_key: "build_job_id" }
 
-  # ── Contract ────────────────────────────────────────────────
-  - { name: "org",      kind: "belongs_to", source: "Contract", target: "Organization", foreign_key: "org_id" }
-  - { name: "client",   kind: "belongs_to", source: "Contract", target: "Client",       foreign_key: "client_id" }
-  - { name: "invoices", kind: "has_many",   source: "Contract", target: "Invoice",      foreign_key: "contract_id" }
-
-  # ── Invoice ─────────────────────────────────────────────────
-  - { name: "contract",   kind: "belongs_to", source: "Invoice", target: "Contract", foreign_key: "contract_id" }
-  - { name: "line_items", kind: "has_many",   source: "Invoice", target: "LineItem", foreign_key: "invoice_id" }
-  - { name: "payments",   kind: "has_many",   source: "Invoice", target: "Payment",  foreign_key: "invoice_id" }
-
-  # ── LineItem ────────────────────────────────────────────────
-  - { name: "invoice", kind: "belongs_to", source: "LineItem", target: "Invoice", foreign_key: "invoice_id" }
-  - { name: "task",    kind: "belongs_to", source: "LineItem", target: "Task",    foreign_key: "task_id" }
-
-  # ── Payment ─────────────────────────────────────────────────
-  - { name: "invoice", kind: "belongs_to", source: "Payment", target: "Invoice", foreign_key: "invoice_id" }
+  # ── UsageRecord ───────────────────────────────────────────────
+  - { name: "org",     kind: "belongs_to", source: "UsageRecord", target: "Organization", foreign_key: "org_id" }
+  - { name: "project", kind: "belongs_to", source: "UsageRecord", target: "Project",      foreign_key: "project_id" }

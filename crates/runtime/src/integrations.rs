@@ -6,41 +6,62 @@ use crate::system_api::*;
 pub struct AppIntegrations;
 
 #[async_trait::async_trait]
-impl PaymentProvider for AppIntegrations {
-    async fn payment_provider_create_charge(
+impl AiProvider for AppIntegrations {
+    async fn ai_provider_generate_code(
         &self,
-        input: PaymentProviderCreateChargeInput,
-    ) -> Result<PaymentProviderCreateChargeOutput, IntegrationError> {
+        input: AiProviderGenerateCodeInput,
+    ) -> Result<AiProviderGenerateCodeOutput, IntegrationError> {
         tracing::info!(
-            amount_cents = input.amount_cents,
-            currency = %input.currency,
-            reference = %input.reference,
-            "payment_provider.create_charge called (stub)"
+            prompt_len = input.prompt.len(),
+            context_len = input.context.len(),
+            "ai_provider.generate_code called (stub)"
         );
 
-        // TODO: replace with real Stripe/payment-provider call
-        Ok(PaymentProviderCreateChargeOutput {
-            charge_id: format!("ch_stub_{}", uuid::Uuid::new_v4()),
-            status: "succeeded".to_string(),
+        // TODO: replace with real LLM call (OpenAI, Anthropic, etc.)
+        Ok(AiProviderGenerateCodeOutput {
+            generated_files:
+                r#"[{"path":"src/App.tsx","content":"export default () => <h1>Hello</h1>"}]"#
+                    .to_string(),
+            tokens_used: 150,
         })
     }
 }
 
 #[async_trait::async_trait]
-impl NotificationProvider for AppIntegrations {
-    async fn notification_provider_send_email(
+impl HostingProvider for AppIntegrations {
+    async fn hosting_provider_deploy_app(
         &self,
-        input: NotificationProviderSendEmailInput,
-    ) -> Result<NotificationProviderSendEmailOutput, IntegrationError> {
+        input: HostingProviderDeployAppInput,
+    ) -> Result<HostingProviderDeployAppOutput, IntegrationError> {
         tracing::info!(
-            to = %input.to,
-            subject = %input.subject,
-            "notification_provider.send_email called (stub)"
+            project_ref = %input.project_ref,
+            subdomain = %input.subdomain,
+            "hosting_provider.deploy_app called (stub)"
         );
 
-        // TODO: replace with real SMTP / SendGrid / SES call
-        Ok(NotificationProviderSendEmailOutput {
-            message_id: format!("msg_stub_{}", uuid::Uuid::new_v4()),
+        // TODO: replace with real Vercel/Netlify/Cloudflare deploy call
+        Ok(HostingProviderDeployAppOutput {
+            url: format!("https://{}.lovable.app", input.subdomain),
+            status: "live".to_string(),
+        })
+    }
+}
+
+#[async_trait::async_trait]
+impl PaymentProvider for AppIntegrations {
+    async fn payment_provider_create_subscription(
+        &self,
+        input: PaymentProviderCreateSubscriptionInput,
+    ) -> Result<PaymentProviderCreateSubscriptionOutput, IntegrationError> {
+        tracing::info!(
+            plan_ref = %input.plan_ref,
+            "payment_provider.create_subscription called (stub)"
+        );
+
+        // TODO: replace with real Stripe subscription call
+        Ok(PaymentProviderCreateSubscriptionOutput {
+            subscription_id: format!("sub_stub_{}", uuid::Uuid::new_v4()),
+            status: "active".to_string(),
         })
     }
 }

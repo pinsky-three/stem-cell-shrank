@@ -1,5 +1,5 @@
 // @generated-stub
-mod purchase_product;
+mod run_build;
 
 /// Concrete implementation of all contract-mode system traits.
 /// Each sub-module implements one trait on this struct.

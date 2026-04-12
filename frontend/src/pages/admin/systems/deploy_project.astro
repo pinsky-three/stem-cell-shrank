@@ -2,48 +2,39 @@
 ---
 import Base from "../../../layouts/Base.astro";
 ---
-<Base title="RecordInvoicePayment | Systems" noindex={true}>
+<Base title="DeployProject | Systems" noindex={true}>
   <div class="mx-auto max-w-3xl px-6 py-12">
     <div class="flex items-center gap-4">
       <a href="/admin" class="text-neutral-500 transition hover:text-neutral-300">&larr; Dashboard</a>
-      <h1 class="text-3xl font-bold tracking-tight">RecordInvoicePayment</h1>
+      <h1 class="text-3xl font-bold tracking-tight">DeployProject</h1>
     </div>
-    <p class="mt-2 text-sm text-neutral-400">Processes a payment charge, records it, and marks the invoice as paid</p>
-    <p class="mt-1 text-xs text-neutral-600">POST /api/systems/record_invoice_payment</p>
+    <p class="mt-2 text-sm text-neutral-400">Deploys the latest successful build of a project to the hosting provider</p>
+    <p class="mt-1 text-xs text-neutral-600">POST /api/systems/deploy_project</p>
 
     <form id="system-form" class="mt-8 flex flex-col gap-4">
       <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 flex flex-col gap-4">
         <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-500">Input</h2>
         <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">invoice id</label>
-              <input type="text" name="invoice_id" placeholder="invoice_id (UUID)"
+              <label class="text-xs font-medium text-neutral-400">project id</label>
+              <input type="text" name="project_id" placeholder="project_id (UUID)"
                 pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
                 class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" required />
             </div>
         <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">amount cents</label>
-              <input type="number" name="amount_cents" placeholder="amount_cents" step="1"
+              <label class="text-xs font-medium text-neutral-400">build job id</label>
+              <input type="text" name="build_job_id" placeholder="build_job_id (UUID)"
+                pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
                 class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" required />
             </div>
         <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">currency</label>
-              <input type="text" name="currency" placeholder="currency"
+              <label class="text-xs font-medium text-neutral-400">subdomain</label>
+              <input type="text" name="subdomain" placeholder="subdomain"
                 class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" required />
             </div>
         <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">method</label>
-              <input type="text" name="method" placeholder="method"
+              <label class="text-xs font-medium text-neutral-400">provider</label>
+              <input type="text" name="provider" placeholder="provider"
                 class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" required />
-            </div>
-        <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">reference code</label>
-              <input type="text" name="reference_code" placeholder="reference_code"
-                class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
-            </div>
-        <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">notes</label>
-              <input type="text" name="notes" placeholder="notes"
-                class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
             </div>
       </div>
       <button type="submit" id="submit-btn"
@@ -54,7 +45,7 @@ import Base from "../../../layouts/Base.astro";
 
     <div id="result-panel" class="mt-6 hidden">
       <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-2">Result</h2>
-      <p class="text-xs text-neutral-600 mb-2">payment (from payment), invoice (from invoice)</p>
+      <p class="text-xs text-neutral-600 mb-2">deployment (from deployment)</p>
       <pre id="result-body"
         class="overflow-auto rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-xs text-neutral-300 max-h-96"></pre>
     </div>
@@ -82,16 +73,14 @@ import Base from "../../../layouts/Base.astro";
       errorPanel.classList.add('hidden');
 
       const body = {
-          invoice_id: form.elements['invoice_id'].value,
-          amount_cents: form.elements['amount_cents'].value ? Number(form.elements['amount_cents'].value) : null,
-          currency: form.elements['currency'].value,
-          method: form.elements['method'].value,
-          reference_code: form.elements['reference_code'].value || null,
-          notes: form.elements['notes'].value || null
+          project_id: form.elements['project_id'].value,
+          build_job_id: form.elements['build_job_id'].value,
+          subdomain: form.elements['subdomain'].value,
+          provider: form.elements['provider'].value
       };
 
       try {
-        const res = await fetch('/api/systems/record_invoice_payment', {
+        const res = await fetch('/api/systems/deploy_project', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),

@@ -2,33 +2,33 @@
 ---
 import Base from "../../../layouts/Base.astro";
 ---
-<Base title="LogBillableTime | Systems" noindex={true}>
+<Base title="CreateProject | Systems" noindex={true}>
   <div class="mx-auto max-w-3xl px-6 py-12">
     <div class="flex items-center gap-4">
       <a href="/admin" class="text-neutral-500 transition hover:text-neutral-300">&larr; Dashboard</a>
-      <h1 class="text-3xl font-bold tracking-tight">LogBillableTime</h1>
+      <h1 class="text-3xl font-bold tracking-tight">CreateProject</h1>
     </div>
-    <p class="mt-2 text-sm text-neutral-400">Creates a time entry and sends a receipt email when billable</p>
-    <p class="mt-1 text-xs text-neutral-600">POST /api/systems/log_billable_time</p>
+    <p class="mt-2 text-sm text-neutral-400">Creates a new AI-builder project and its first conversation</p>
+    <p class="mt-1 text-xs text-neutral-600">POST /api/systems/create_project</p>
 
     <form id="system-form" class="mt-8 flex flex-col gap-4">
       <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 flex flex-col gap-4">
         <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-500">Input</h2>
         <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">task id</label>
-              <input type="text" name="task_id" placeholder="task_id (UUID)"
+              <label class="text-xs font-medium text-neutral-400">org id</label>
+              <input type="text" name="org_id" placeholder="org_id (UUID)"
                 pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
                 class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" required />
             </div>
         <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">user id</label>
-              <input type="text" name="user_id" placeholder="user_id (UUID)"
+              <label class="text-xs font-medium text-neutral-400">creator id</label>
+              <input type="text" name="creator_id" placeholder="creator_id (UUID)"
                 pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
                 class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" required />
             </div>
         <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">hours</label>
-              <input type="number" name="hours" placeholder="hours" step="any"
+              <label class="text-xs font-medium text-neutral-400">name</label>
+              <input type="text" name="name" placeholder="name"
                 class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" required />
             </div>
         <div class="flex flex-col gap-1">
@@ -36,13 +36,9 @@ import Base from "../../../layouts/Base.astro";
               <input type="text" name="description" placeholder="description"
                 class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
             </div>
-        <label class="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="billable" class="rounded border-neutral-600 bg-neutral-800 text-emerald-500 focus:ring-emerald-500" />
-              billable
-            </label>
         <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">rate cents</label>
-              <input type="number" name="rate_cents" placeholder="rate_cents" step="1"
+              <label class="text-xs font-medium text-neutral-400">framework</label>
+              <input type="text" name="framework" placeholder="framework"
                 class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
             </div>
       </div>
@@ -54,7 +50,7 @@ import Base from "../../../layouts/Base.astro";
 
     <div id="result-panel" class="mt-6 hidden">
       <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-2">Result</h2>
-      <p class="text-xs text-neutral-600 mb-2">time_entry (from time_entry)</p>
+      <p class="text-xs text-neutral-600 mb-2">project (from project), conversation (from conversation)</p>
       <pre id="result-body"
         class="overflow-auto rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-xs text-neutral-300 max-h-96"></pre>
     </div>
@@ -82,16 +78,15 @@ import Base from "../../../layouts/Base.astro";
       errorPanel.classList.add('hidden');
 
       const body = {
-          task_id: form.elements['task_id'].value,
-          user_id: form.elements['user_id'].value,
-          hours: form.elements['hours'].value ? parseFloat(form.elements['hours'].value) : null,
+          org_id: form.elements['org_id'].value,
+          creator_id: form.elements['creator_id'].value,
+          name: form.elements['name'].value,
           description: form.elements['description'].value || null,
-          billable: form.elements['billable'].checked,
-          rate_cents: form.elements['rate_cents'].value ? Number(form.elements['rate_cents'].value) : null
+          framework: form.elements['framework'].value || null
       };
 
       try {
-        const res = await fetch('/api/systems/log_billable_time', {
+        const res = await fetch('/api/systems/create_project', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),

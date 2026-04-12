@@ -2,304 +2,301 @@ version: 1
 
 # ────────────────────────────────────────────────────────────────
 # Integrations — external provider contracts
-# Each operation defines typed input/output that the user must
-# implement via a generated trait. The system executor calls
-# these traits automatically during workflow execution.
 # ────────────────────────────────────────────────────────────────
 
 integrations:
 
+  - name: "ai_provider"
+    operations:
+      - name: "generate_code"
+        input:
+          - { name: "prompt",  type: "string" }
+          - { name: "context", type: "string" }
+        output:
+          - { name: "generated_files", type: "string" }
+          - { name: "tokens_used",     type: "bigint" }
+
+  - name: "hosting_provider"
+    operations:
+      - name: "deploy_app"
+        input:
+          - { name: "project_ref", type: "string" }
+          - { name: "subdomain",   type: "string" }
+        output:
+          - { name: "url",    type: "string" }
+          - { name: "status", type: "string" }
+
   - name: "payment_provider"
     operations:
-      - name: "create_charge"
+      - name: "create_subscription"
         input:
-          - { name: "amount_cents", type: "bigint" }
-          - { name: "currency",     type: "string" }
-          - { name: "reference",    type: "string" }
+          - { name: "plan_ref", type: "string" }
+          - { name: "token",    type: "string" }
         output:
-          - { name: "charge_id", type: "string" }
-          - { name: "status",    type: "string" }
-
-  - name: "notification_provider"
-    operations:
-      - name: "send_email"
-        input:
-          - { name: "to",      type: "string" }
-          - { name: "subject", type: "string" }
-          - { name: "body",    type: "string" }
-        output:
-          - { name: "message_id", type: "string" }
+          - { name: "subscription_id", type: "string" }
+          - { name: "status",          type: "string" }
 
 # ────────────────────────────────────────────────────────────────
-# Systems — declarative business workflows
-#
-# Each system compiles to: Input/Result DTOs, an async executor
-# function, typed integration calls, and event scaffolding.
-#
-# Phase 2 step kinds:
-#   load_one · load_many · create · update · delete
-#   guard · branch · call_integration · emit_event
+# Systems — declarative & contract business workflows
 # ────────────────────────────────────────────────────────────────
 
 systems:
 
-  # ── 1. Record a payment against an invoice ──────────────────
-  # Exercises: load_one, guard, call_integration, create, update, emit_event
-  - name: "RecordInvoicePayment"
-    description: "Processes a payment charge, records it, and marks the invoice as paid"
+  # ── 1. Create a new project with an initial conversation ──────
+  - name: "CreateProject"
+    description: "Creates a new AI-builder project and its first conversation"
     input:
-      - { name: "invoice_id",    type: "uuid",   required: true  }
-      - { name: "amount_cents",  type: "bigint", required: true  }
-      - { name: "currency",      type: "string", required: true  }
-      - { name: "method",        type: "string", required: true  }
-      - { name: "reference_code", type: "string", required: false }
-      - { name: "notes",         type: "string", required: false }
+      - { name: "org_id",      type: "uuid",   required: true }
+      - { name: "creator_id",  type: "uuid",   required: true }
+      - { name: "name",        type: "string", required: true }
+      - { name: "description", type: "string", required: false }
+      - { name: "framework",   type: "string", required: false }
     steps:
       - kind: "load_one"
-        entity: "Invoice"
-        by: "input.invoice_id"
-        as: "invoice"
-        not_found: "Invoice not found"
+        entity: "Organization"
+        by: "input.org_id"
+        as: "org"
+        not_found: "Organization not found"
 
       - kind: "guard"
-        check: { field: "invoice.paid", equals: false }
-        error: "Invoice is already paid"
+        check: { field: "org.active", equals: true }
+        error: "Organization is not active"
 
       - kind: "load_one"
-        entity: "Contract"
-        by: "invoice.contract_id"
-        as: "contract"
-        not_found: "Associated contract not found"
+        entity: "User"
+        by: "input.creator_id"
+        as: "creator"
+        not_found: "Creator user not found"
+
+      - kind: "guard"
+        check: { field: "creator.active", equals: true }
+        error: "Creator user is not active"
+
+      - kind: "create"
+        entity: "Project"
+        set:
+          - { field: "name",        from: "input.name" }
+          - { field: "slug",        from: "input.name" }
+          - { field: "description", from: "input.description" }
+          - { field: "status",      value: "active" }
+          - { field: "framework",   from: "input.framework" }
+          - { field: "visibility",  value: "private" }
+          - { field: "active",      value: true }
+          - { field: "org_id",      from: "input.org_id" }
+          - { field: "creator_id",  from: "input.creator_id" }
+        as: "project"
+
+      - kind: "create"
+        entity: "Conversation"
+        set:
+          - { field: "title",      value: "Initial conversation" }
+          - { field: "active",     value: true }
+          - { field: "project_id", from: "project.id" }
+        as: "conversation"
+
+      - kind: "emit_event"
+        event: "project_created"
+        payload:
+          - { field: "project_id",      from: "project.id" }
+          - { field: "org_id",          from: "org.id" }
+          - { field: "conversation_id", from: "conversation.id" }
+
+    result:
+      - { name: "project",      from: "project" }
+      - { name: "conversation", from: "conversation" }
+
+  # ── 2. Send a message and queue a build ────────────────────────
+  - name: "SendMessage"
+    description: "Posts a user message to a conversation and queues an AI build job"
+    input:
+      - { name: "conversation_id", type: "uuid",   required: true }
+      - { name: "author_id",       type: "uuid",   required: true }
+      - { name: "content",         type: "string", required: true }
+      - { name: "model",           type: "string", required: true }
+    steps:
+      - kind: "load_one"
+        entity: "Conversation"
+        by: "input.conversation_id"
+        as: "conversation"
+        not_found: "Conversation not found"
+
+      - kind: "guard"
+        check: { field: "conversation.active", equals: true }
+        error: "Conversation is closed"
+
+      - kind: "load_one"
+        entity: "Project"
+        by: "conversation.project_id"
+        as: "project"
+        not_found: "Project not found"
+
+      - kind: "guard"
+        check: { field: "project.active", equals: true }
+        error: "Project is not active"
+
+      - kind: "create"
+        entity: "Message"
+        set:
+          - { field: "role",            value: "user" }
+          - { field: "content",         from: "input.content" }
+          - { field: "sort_order",      value: 0 }
+          - { field: "has_attachment",  value: false }
+          - { field: "conversation_id", from: "input.conversation_id" }
+          - { field: "author_id",       from: "input.author_id" }
+        as: "message"
+
+      - kind: "create"
+        entity: "BuildJob"
+        set:
+          - { field: "status",         value: "queued" }
+          - { field: "prompt_summary", from: "input.content" }
+          - { field: "model",          from: "input.model" }
+          - { field: "tokens_used",    value: 0 }
+          - { field: "error_message",  value: "" }
+          - { field: "duration_ms",    value: 0 }
+          - { field: "project_id",     from: "project.id" }
+          - { field: "message_id",     from: "message.id" }
+        as: "build_job"
+
+      - kind: "emit_event"
+        event: "message_sent"
+        payload:
+          - { field: "message_id",      from: "message.id" }
+          - { field: "build_job_id",    from: "build_job.id" }
+          - { field: "project_id",      from: "project.id" }
+          - { field: "conversation_id", from: "conversation.id" }
+
+    result:
+      - { name: "message",   from: "message" }
+      - { name: "build_job", from: "build_job" }
+
+  # ── 3. Run a build (contract mode — impl provided by user) ────
+  - name: "RunBuild"
+    mode: "contract"
+    description: "Executes the AI code-generation pipeline: fetches project context, calls the AI provider, and writes artifacts"
+    input:
+      - { name: "build_job_id", type: "uuid",   required: true }
+    output:
+      - { name: "artifacts_count", type: "int" }
+      - { name: "tokens_used",    type: "bigint" }
+      - { name: "status",         type: "string" }
+    errors:
+      - "BuildJobNotFound"
+      - "ProjectNotFound"
+      - "AiProviderError(String)"
+      - "BuildFailed(String)"
+
+  # ── 4. Deploy a project ────────────────────────────────────────
+  - name: "DeployProject"
+    description: "Deploys the latest successful build of a project to the hosting provider"
+    input:
+      - { name: "project_id",    type: "uuid",   required: true }
+      - { name: "build_job_id",  type: "uuid",   required: true }
+      - { name: "subdomain",     type: "string", required: true }
+      - { name: "provider",      type: "string", required: true }
+    steps:
+      - kind: "load_one"
+        entity: "Project"
+        by: "input.project_id"
+        as: "project"
+        not_found: "Project not found"
+
+      - kind: "guard"
+        check: { field: "project.active", equals: true }
+        error: "Project is not active"
+
+      - kind: "load_one"
+        entity: "BuildJob"
+        by: "input.build_job_id"
+        as: "build_job"
+        not_found: "Build job not found"
+
+      - kind: "guard"
+        check: { field: "build_job.status", equals: "succeeded" }
+        error: "Can only deploy a successful build"
+
+      - kind: "call_integration"
+        integration: "hosting_provider"
+        operation: "deploy_app"
+        input:
+          - { param: "project_ref", from: "project.slug" }
+          - { param: "subdomain",   from: "input.subdomain" }
+        as: "deploy_result"
+
+      - kind: "create"
+        entity: "Deployment"
+        set:
+          - { field: "status",       value: "live" }
+          - { field: "url",          from: "deploy_result.url" }
+          - { field: "subdomain",    from: "input.subdomain" }
+          - { field: "provider",     from: "input.provider" }
+          - { field: "active",       value: true }
+          - { field: "project_id",   from: "input.project_id" }
+          - { field: "build_job_id", from: "input.build_job_id" }
+        as: "deployment"
+
+      - kind: "emit_event"
+        event: "project_deployed"
+        payload:
+          - { field: "deployment_id", from: "deployment.id" }
+          - { field: "project_id",    from: "project.id" }
+          - { field: "url",           from: "deploy_result.url" }
+
+    result:
+      - { name: "deployment", from: "deployment" }
+
+  # ── 5. Upgrade an organization's subscription ──────────────────
+  - name: "UpgradeSubscription"
+    description: "Changes an organization's plan and processes payment via the payment provider"
+    input:
+      - { name: "org_id",                type: "uuid",   required: true }
+      - { name: "plan_id",               type: "uuid",   required: true }
+      - { name: "payment_method_token",  type: "string", required: true }
+    steps:
+      - kind: "load_one"
+        entity: "Organization"
+        by: "input.org_id"
+        as: "org"
+        not_found: "Organization not found"
+
+      - kind: "guard"
+        check: { field: "org.active", equals: true }
+        error: "Organization is not active"
+
+      - kind: "load_one"
+        entity: "Plan"
+        by: "input.plan_id"
+        as: "plan"
+        not_found: "Plan not found"
+
+      - kind: "guard"
+        check: { field: "plan.active", equals: true }
+        error: "Selected plan is not available"
 
       - kind: "call_integration"
         integration: "payment_provider"
-        operation: "create_charge"
+        operation: "create_subscription"
         input:
-          - { param: "amount_cents", from: "input.amount_cents" }
-          - { param: "currency",     from: "input.currency" }
-          - { param: "reference",    from: "invoice.invoice_number" }
-        as: "charge"
+          - { param: "plan_ref", from: "plan.slug" }
+          - { param: "token",    from: "input.payment_method_token" }
+        as: "payment_result"
 
       - kind: "create"
-        entity: "Payment"
+        entity: "Subscription"
         set:
-          - { field: "invoice_id",    from: "input.invoice_id" }
-          - { field: "amount_cents",  from: "input.amount_cents" }
-          - { field: "currency",      from: "input.currency" }
-          - { field: "method",        from: "input.method" }
-          - { field: "reference_code", from: "input.reference_code" }
-          - { field: "notes",         from: "input.notes" }
-        as: "payment"
-
-      - kind: "update"
-        entity: "Invoice"
-        target: "invoice.id"
-        set:
-          - { field: "paid",   value: true }
-          - { field: "status", value: "paid" }
+          - { field: "status",                   value: "active" }
+          - { field: "provider_subscription_id", from: "payment_result.subscription_id" }
+          - { field: "active",                   value: true }
+          - { field: "org_id",                   from: "input.org_id" }
+          - { field: "plan_id",                  from: "input.plan_id" }
+        as: "subscription"
 
       - kind: "emit_event"
-        event: "invoice_payment_recorded"
+        event: "subscription_upgraded"
         payload:
-          - { field: "invoice_id", from: "invoice.id" }
-          - { field: "payment_id", from: "payment.id" }
-          - { field: "charge_id",  from: "charge.charge_id" }
+          - { field: "subscription_id", from: "subscription.id" }
+          - { field: "org_id",          from: "org.id" }
+          - { field: "plan_id",         from: "plan.id" }
 
     result:
-      - { name: "payment", from: "payment" }
-      - { name: "invoice", from: "invoice" }
-
-  # ── 2. Assign a task to an active user ──────────────────────
-  # Exercises: load_one ×2, guard, update, emit_event
-  - name: "AssignTask"
-    description: "Assigns a task to an active user"
-    input:
-      - { name: "task_id",     type: "uuid", required: true }
-      - { name: "assignee_id", type: "uuid", required: true }
-    steps:
-      - kind: "load_one"
-        entity: "Task"
-        by: "input.task_id"
-        as: "task"
-        not_found: "Task not found"
-
-      - kind: "load_one"
-        entity: "User"
-        by: "input.assignee_id"
-        as: "assignee"
-        not_found: "Assignee not found"
-
-      - kind: "guard"
-        check: { field: "assignee.active", equals: true }
-        error: "Cannot assign task to an inactive user"
-
-      - kind: "update"
-        entity: "Task"
-        target: "task.id"
-        set:
-          - { field: "assignee_id", from: "input.assignee_id" }
-
-      - kind: "emit_event"
-        event: "task_assigned"
-        payload:
-          - { field: "task_id",     from: "task.id" }
-          - { field: "assignee_id", from: "assignee.id" }
-          - { field: "project_id",  from: "task.project_id" }
-
-    result:
-      - { name: "task", from: "task" }
-
-  # ── 3. Close a sprint ──────────────────────────────────────
-  # Exercises: load_one, guard, load_many, update, emit_event
-  - name: "CloseSprint"
-    description: "Deactivates a sprint and loads its remaining tasks for review"
-    input:
-      - { name: "sprint_id", type: "uuid", required: true }
-    steps:
-      - kind: "load_one"
-        entity: "Sprint"
-        by: "input.sprint_id"
-        as: "sprint"
-        not_found: "Sprint not found"
-
-      - kind: "guard"
-        check: { field: "sprint.active", equals: true }
-        error: "Sprint is already closed"
-
-      - kind: "load_many"
-        entity: "Task"
-        filter: { field: "sprint_id", from: "sprint.id" }
-        as: "sprint_tasks"
-
-      - kind: "update"
-        entity: "Sprint"
-        target: "sprint.id"
-        set:
-          - { field: "active", value: false }
-
-      - kind: "emit_event"
-        event: "sprint_closed"
-        payload:
-          - { field: "sprint_id",  from: "sprint.id" }
-          - { field: "project_id", from: "sprint.project_id" }
-
-    result:
-      - { name: "sprint",      from: "sprint" }
-      - { name: "sprint_tasks", from: "sprint_tasks" }
-
-  # ── 4. Log billable time with optional notification ─────────
-  # Exercises: load_one ×2, guard, create, branch + call_integration, emit_event
-  - name: "LogBillableTime"
-    description: "Creates a time entry and sends a receipt email when billable"
-    input:
-      - { name: "task_id",     type: "uuid",   required: true  }
-      - { name: "user_id",     type: "uuid",   required: true  }
-      - { name: "hours",       type: "float",  required: true  }
-      - { name: "description", type: "string", required: false }
-      - { name: "billable",    type: "bool",   required: true  }
-      - { name: "rate_cents",  type: "bigint", required: false }
-    steps:
-      - kind: "load_one"
-        entity: "Task"
-        by: "input.task_id"
-        as: "task"
-        not_found: "Task not found"
-
-      - kind: "load_one"
-        entity: "User"
-        by: "input.user_id"
-        as: "worker"
-        not_found: "User not found"
-
-      - kind: "guard"
-        check: { field: "task.done", equals: false }
-        error: "Cannot log time on a completed task"
-
-      - kind: "create"
-        entity: "TimeEntry"
-        set:
-          - { field: "task_id",     from: "input.task_id" }
-          - { field: "user_id",     from: "input.user_id" }
-          - { field: "project_id",  from: "task.project_id" }
-          - { field: "hours",       from: "input.hours" }
-          - { field: "description", from: "input.description" }
-          - { field: "billable",    from: "input.billable" }
-          - { field: "rate_cents",  from: "input.rate_cents" }
-        as: "time_entry"
-
-      - kind: "branch"
-        check: { field: "input.billable", equals: true }
-        then:
-          - kind: "call_integration"
-            integration: "notification_provider"
-            operation: "send_email"
-            input:
-              - { param: "to",      from: "worker.email" }
-              - { param: "subject", value: "Billable time logged" }
-              - { param: "body",    from: "task.title" }
-            as: "email_receipt"
-
-      - kind: "emit_event"
-        event: "time_entry_created"
-        payload:
-          - { field: "time_entry_id", from: "time_entry.id" }
-          - { field: "task_id",       from: "task.id" }
-          - { field: "billable",      from: "time_entry.billable" }
-
-    result:
-      - { name: "time_entry", from: "time_entry" }
-
-  # ── 5. Remove a comment (author-only) ──────────────────────
-  # Exercises: load_one ×2, guard (field-to-field), delete, emit_event
-  - name: "RemoveComment"
-    description: "Deletes a comment after verifying the requesting user is the author"
-    input:
-      - { name: "comment_id", type: "uuid", required: true }
-      - { name: "user_id",    type: "uuid", required: true }
-    steps:
-      - kind: "load_one"
-        entity: "Comment"
-        by: "input.comment_id"
-        as: "comment"
-        not_found: "Comment not found"
-
-      - kind: "guard"
-        check: { field: "comment.author_id", equals_field: "input.user_id" }
-        error: "Only the author can delete this comment"
-
-      - kind: "delete"
-        entity: "Comment"
-        target: "comment.id"
-
-      - kind: "emit_event"
-        event: "comment_removed"
-        payload:
-          - { field: "comment_id", from: "comment.id" }
-          - { field: "task_id",    from: "comment.task_id" }
-          - { field: "author_id",  from: "comment.author_id" }
-
-    result: []
-
-  # ── 6. Purchase a product (contract-mode) ───────────────────
-  # This system is too complex for declarative steps: the macro
-  # generates only the trait, DTOs, and error enum. The actual
-  # implementation is provided by the user (or an LLM agent)
-  # in src/systems/purchase_product.rs.
-  - name: "PurchaseProduct"
-    mode: "contract"
-    description: "Validates buyer, checks stock, processes payment, and creates an order"
-    input:
-      - { name: "buyer_id",             type: "uuid",   required: true  }
-      - { name: "product_id",           type: "uuid",   required: true  }
-      - { name: "quantity",             type: "int",    required: true  }
-      - { name: "payment_method_token", type: "string", required: true  }
-      - { name: "coupon_code",          type: "string", required: false }
-    output:
-      - { name: "order_id",        type: "uuid"   }
-      - { name: "payment_status",  type: "string" }
-      - { name: "total_cents",     type: "bigint" }
-    errors:
-      - "BuyerNotFound"
-      - "ProductNotFound"
-      - "InsufficientStock"
-      - "PaymentFailed(String)"
+      - { name: "subscription", from: "subscription" }

@@ -2,15 +2,15 @@
 ---
 import Base from "../../layouts/Base.astro";
 ---
-<Base title="LineItem | Admin" noindex={true}>
+<Base title="Artifact | Admin" noindex={true}>
   <div class="mx-auto max-w-7xl px-6 py-12">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-4">
         <a href="/admin" class="text-neutral-500 transition hover:text-neutral-300">&larr; Dashboard</a>
-        <h1 class="text-3xl font-bold tracking-tight">LineItem</h1>
+        <h1 class="text-3xl font-bold tracking-tight">Artifact</h1>
       </div>
       <button id="create-btn" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold transition hover:bg-indigo-500">
-        + New line_item
+        + New artifact
       </button>
     </div>
 
@@ -20,12 +20,12 @@ import Base from "../../layouts/Base.astro";
         <thead class="border-b border-neutral-800 bg-neutral-900/50">
           <tr>
           <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">id</th>
-          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">description</th>
-          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">quantity</th>
-          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">unit_cents</th>
-          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">amount_cents</th>
-          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">invoice_id</th>
-          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">task_id</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">file_path</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">content_hash</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">size_bytes</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">language</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">build_job_id</th>
+          <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">project_id</th>
           <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-neutral-400">actions</th>
           </tr>
         </thead>
@@ -37,22 +37,22 @@ import Base from "../../layouts/Base.astro";
   <!-- Form dialog -->
   <dialog id="form-dialog" class="rounded-xl border border-neutral-700 bg-neutral-900 p-0 text-neutral-100 shadow-2xl backdrop:bg-black/60">
     <form id="entity-form" method="dialog" class="flex flex-col gap-4 p-6" style="min-width:380px">
-      <h2 id="form-title" class="text-lg font-bold">New line_item</h2>
+      <h2 id="form-title" class="text-lg font-bold">New artifact</h2>
       <div class="flex flex-col gap-3">
-        <input type="text" name="description" placeholder="description"
+        <input type="text" name="file_path" placeholder="file_path"
               class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
-        <input type="number" name="quantity" placeholder="quantity" step="1"
+        <input type="text" name="content_hash" placeholder="content_hash"
               class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
-        <input type="number" name="unit_cents" placeholder="unit_cents" step="1"
+        <input type="number" name="size_bytes" placeholder="size_bytes" step="1"
               class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
-        <input type="number" name="amount_cents" placeholder="amount_cents" step="1"
-              class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
-        <input type="text" name="invoice_id" placeholder="invoice_id (UUID)"
-              pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-              class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
-        <input type="text" name="task_id" placeholder="task_id (UUID)"
-              pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+        <input type="text" name="language" placeholder="language"
               class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        <input type="text" name="build_job_id" placeholder="build_job_id (UUID)"
+              pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+              class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
+        <input type="text" name="project_id" placeholder="project_id (UUID)"
+              pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+              class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" required />
       </div>
       <div class="flex justify-end gap-3 pt-2">
         <button type="button" id="cancel-btn" class="rounded-lg border border-neutral-700 px-4 py-2 text-sm transition hover:bg-neutral-800">Cancel</button>
@@ -71,7 +71,7 @@ import Base from "../../layouts/Base.astro";
   </dialog>
 
   <script>
-    const API = '/api/line_items';
+    const API = '/api/artifacts';
     const dialog = document.getElementById('form-dialog');
     const form = document.getElementById('entity-form');
     const relDialog = document.getElementById('rel-dialog');
@@ -80,12 +80,12 @@ import Base from "../../layouts/Base.astro";
     function renderRow(r) {
       return `<tr class="transition hover:bg-neutral-900/30">` +
         `<td class="px-4 py-3 font-mono text-xs text-neutral-500">${r.id.substring(0,8)}...</td>`+
-        `<td class="px-4 py-3 text-sm text-neutral-300">${r.description??'—'}</td>`+
-        `<td class="px-4 py-3 text-sm text-neutral-300">${r.quantity??'—'}</td>`+
-        `<td class="px-4 py-3 text-sm text-neutral-300">${r.unit_cents??'—'}</td>`+
-        `<td class="px-4 py-3 text-sm text-neutral-300">${r.amount_cents??'—'}</td>`+
-        `<td class="px-4 py-3 font-mono text-xs"><a href="/admin/invoices" class="text-indigo-400 hover:underline">${r.invoice_id?r.invoice_id.substring(0,8)+'...':'—'}</a></td>`+
-        `<td class="px-4 py-3 font-mono text-xs"><a href="/admin/tasks" class="text-indigo-400 hover:underline">${r.task_id?r.task_id.substring(0,8)+'...':'—'}</a></td>` +
+        `<td class="px-4 py-3 text-sm text-neutral-300">${r.file_path??'—'}</td>`+
+        `<td class="px-4 py-3 text-sm text-neutral-300">${r.content_hash??'—'}</td>`+
+        `<td class="px-4 py-3 text-sm text-neutral-300">${r.size_bytes??'—'}</td>`+
+        `<td class="px-4 py-3 text-sm text-neutral-300">${r.language??'—'}</td>`+
+        `<td class="px-4 py-3 font-mono text-xs"><a href="/admin/build_jobs" class="text-indigo-400 hover:underline">${r.build_job_id?r.build_job_id.substring(0,8)+'...':'—'}</a></td>`+
+        `<td class="px-4 py-3 font-mono text-xs"><a href="/admin/projects" class="text-indigo-400 hover:underline">${r.project_id?r.project_id.substring(0,8)+'...':'—'}</a></td>` +
         `<td class="px-4 py-3 text-sm flex gap-3">
           <button onclick="editItem('${r.id}')" class="text-indigo-400 hover:underline">edit</button>
           <button onclick="deleteItem('${r.id}')" class="text-red-400 hover:underline">del</button>
@@ -102,7 +102,7 @@ import Base from "../../layouts/Base.astro";
     document.getElementById('create-btn').addEventListener('click', () => {
       editingId = null;
       form.reset();
-      document.getElementById('form-title').textContent = 'New line_item';
+      document.getElementById('form-title').textContent = 'New artifact';
       dialog.showModal();
     });
 
@@ -111,12 +111,12 @@ import Base from "../../layouts/Base.astro";
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const body = {
-        description: form.elements['description'].value,
-        quantity: form.elements['quantity'].value ? Number(form.elements['quantity'].value) : null,
-        unit_cents: form.elements['unit_cents'].value ? Number(form.elements['unit_cents'].value) : null,
-        amount_cents: form.elements['amount_cents'].value ? Number(form.elements['amount_cents'].value) : null,
-        invoice_id: form.elements['invoice_id'].value,
-        task_id: form.elements['task_id'].value || null
+        file_path: form.elements['file_path'].value,
+        content_hash: form.elements['content_hash'].value,
+        size_bytes: form.elements['size_bytes'].value ? Number(form.elements['size_bytes'].value) : null,
+        language: form.elements['language'].value || null,
+        build_job_id: form.elements['build_job_id'].value,
+        project_id: form.elements['project_id'].value
       };
       const url = editingId ? `${API}/${editingId}` : API;
       const method = editingId ? 'PUT' : 'POST';
@@ -133,18 +133,18 @@ import Base from "../../layouts/Base.astro";
       const res = await fetch(`${API}/${id}`);
       const item = await res.json();
       editingId = id;
-      document.getElementById('form-title').textContent = 'Edit line_item';
-      form.elements['description'].value = item.description ?? '';
-      form.elements['quantity'].value = item.quantity ?? '';
-      form.elements['unit_cents'].value = item.unit_cents ?? '';
-      form.elements['amount_cents'].value = item.amount_cents ?? '';
-      form.elements['invoice_id'].value = item.invoice_id ?? '';
-      form.elements['task_id'].value = item.task_id ?? '';
+      document.getElementById('form-title').textContent = 'Edit artifact';
+      form.elements['file_path'].value = item.file_path ?? '';
+      form.elements['content_hash'].value = item.content_hash ?? '';
+      form.elements['size_bytes'].value = item.size_bytes ?? '';
+      form.elements['language'].value = item.language ?? '';
+      form.elements['build_job_id'].value = item.build_job_id ?? '';
+      form.elements['project_id'].value = item.project_id ?? '';
       dialog.showModal();
     };
 
     window.deleteItem = async function(id) {
-      if (!confirm('Delete this line_item?')) return;
+      if (!confirm('Delete this artifact?')) return;
       await fetch(`${API}/${id}`, { method: 'DELETE' });
       loadData();
     };
