@@ -10,18 +10,22 @@ Stem Cell compiles a [resource-model-macro](crates/resource-model-macro/) YAML s
 - **REST API** (Axum + OpenAPI via utoipa) with Scalar docs at `/api/docs`
 - **Admin dashboard** (Astro + Tailwind) with CRUD pages generated from the same spec
 
-Edit `crates/runtime/specs/self.yaml`, rebuild, and everything updates.
+Edit `specs/self.yaml`, rebuild, and everything updates.
 
 ## Architecture
 
 ```
 stem-cell/
+├── specs/
+│   ├── self.yaml               # data model — the single source of truth
+│   └── systems.yaml            # business-capability contracts + workflows
 ├── crates/
 │   ├── resource-model-macro/   # proc-macro: YAML → Rust codegen (publishable crate)
+│   ├── system-model-macro/     # proc-macro: systems YAML → traits, DTOs, executors
+│   ├── systems-codegen/        # CLI: materializes impl stubs + contract tests
 │   └── runtime/                # binary: Axum server + build.rs (frontend codegen)
-│       ├── build.rs            # reads spec → generates Astro pages → builds frontend
-│       ├── specs/self.yaml     # the single source of truth
-│       └── src/main.rs         # ~45 LOC: connect DB, migrate, serve API + static files
+│       ├── build.rs            # reads specs → generates Astro pages → builds frontend
+│       └── src/main.rs         # connect DB, migrate, serve API + static files
 ├── frontend/                   # Astro 6 + Tailwind 4 (pages are @generated)
 ├── Dockerfile                  # multi-stage: rust:bookworm → debian:bookworm-slim
 └── .mise.toml                  # tool versions + task runner
@@ -29,7 +33,7 @@ stem-cell/
 
 ### How it works
 
-1. `build.rs` reads `specs/self.yaml` and generates Astro pages into `frontend/src/pages/`
+1. `build.rs` reads `specs/self.yaml` and `specs/systems.yaml`, generates Astro pages into `frontend/src/pages/`
 2. `build.rs` runs `npm run build` to compile the frontend into `public/`
 3. The proc-macro reads the same spec and expands into structs, repos, migrations, and API routes
 4. At startup, the server applies migrations, mounts the API under `/api/*`, serves OpenAPI docs at `/api/docs`, and serves the static frontend as a fallback
@@ -104,7 +108,7 @@ The image is a two-stage build (~100 MB final) using `debian:bookworm-slim`. It 
 
 ## Defining your model
 
-Edit `crates/runtime/specs/self.yaml`:
+Edit `specs/self.yaml`:
 
 ```yaml
 version: 1
@@ -135,7 +139,8 @@ See the [resource-model-macro README](crates/resource-model-macro/README.md) for
 |---|---|
 | `crates/resource-model-macro/` | Proc-macro crate (YAML → Rust codegen). Independently publishable to crates.io. |
 | `crates/runtime/` | The `stem-cell` binary. `build.rs` generates frontend pages; `main.rs` wires the server. |
-| `crates/runtime/specs/self.yaml` | Single source of truth for the data model. |
+| `specs/self.yaml` | Single source of truth for the data model. |
+| `specs/systems.yaml` | Business-capability contracts and declarative workflows. |
 | `frontend/` | Astro 6 + Tailwind 4. Pages under `src/pages/` are `@generated` — don't edit them by hand. |
 | `public/` | Build output from Astro (gitignored). Served as static files. |
 

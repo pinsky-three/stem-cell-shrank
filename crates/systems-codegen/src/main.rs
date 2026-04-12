@@ -9,7 +9,7 @@ use std::{fs, io::Write};
 #[command(name = "systems-codegen", about = "Materialize impl stubs and test scaffolds from systems.yaml")]
 struct Cli {
     /// Path to systems.yaml
-    #[arg(long, default_value = "crates/runtime/specs/systems.yaml")]
+    #[arg(long, default_value = "specs/systems.yaml")]
     spec: PathBuf,
 
     /// Runtime crate root (where src/ and tests/ live)

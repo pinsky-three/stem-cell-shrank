@@ -588,7 +588,7 @@ systems:
     fn parse_full_systems_yaml() {
         let yaml = std::fs::read_to_string(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../runtime/specs/systems.yaml"
+            "/../../specs/systems.yaml"
         ))
         .unwrap();
         let spec: SystemsSpec = serde_yaml::from_str(&yaml).unwrap();

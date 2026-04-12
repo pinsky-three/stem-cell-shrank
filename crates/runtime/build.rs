@@ -83,8 +83,8 @@ fn main() {
         .expect("workspace root not found");
 
     let frontend = workspace_root.join("frontend");
-    let spec_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("specs/self.yaml");
-    let systems_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("specs/systems.yaml");
+    let spec_path = workspace_root.join("specs/self.yaml");
+    let systems_path = workspace_root.join("specs/systems.yaml");
     let index = workspace_root.join("public/index.html");
 
     println!("cargo:rerun-if-changed={}", index.display());
