@@ -99,3 +99,20 @@ run = "npm install"
 description = "Astro dev server with hot reload"
 dir = "frontend"
 run = "npm run dev"
+
+# ── Browser Runtime (PGlite) ─────────────────────────────
+
+[tasks."browser:codegen"]
+description = "Generate browser runtime from specs (TS types, CRUD, router, api.js)"
+dir = "packages/browser-runtime"
+run = "npx tsx src/cli.ts codegen ../../specs"
+
+[tasks."browser:serve"]
+description = "Codegen + serve browser runtime (PGlite in browser)"
+dir = "packages/browser-runtime"
+run = "npx tsx src/cli.ts serve ../../specs"
+
+[tasks."browser:typecheck"]
+description = "Type-check browser-runtime package"
+dir = "packages/browser-runtime"
+run = "npx tsc --noEmit"
