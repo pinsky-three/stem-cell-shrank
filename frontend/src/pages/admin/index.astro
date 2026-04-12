@@ -1,4 +1,4 @@
-<!-- @generated from specs/self.yaml — do not edit -->
+<!-- @generated from specs/self.yaml + systems.yaml — do not edit -->
 ---
 import Base from "../../layouts/Base.astro";
 ---
@@ -11,7 +11,8 @@ import Base from "../../layouts/Base.astro";
       </a>
     </div>
 
-    <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <h2 class="mt-10 text-xl font-bold tracking-tight text-neutral-300">Entities</h2>
+    <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       <a href="/admin/organizations" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
         <h3 class="text-lg font-semibold">Organization</h3>
         <p id="count-organizations" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
@@ -91,6 +92,36 @@ import Base from "../../layouts/Base.astro";
         <h3 class="text-lg font-semibold">Payment</h3>
         <p id="count-payments" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
         <p class="mt-1 text-xs text-neutral-500">/admin/payments</p>
+      </a>
+    </div>
+
+    <h2 class="mt-14 text-xl font-bold tracking-tight text-neutral-300">Systems</h2>
+    <p class="mt-1 text-sm text-neutral-500">Declarative business workflows generated from systems.yaml</p>
+    <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <a href="/admin/systems/record_invoice_payment" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">RecordInvoicePayment</h3>
+        <p class="mt-2 text-sm text-neutral-400">Processes a payment charge, records it, and marks the invoice as paid</p>
+        <p class="mt-2 text-xs text-neutral-500">6 inputs &middot; POST /api/systems/record_invoice_payment</p>
+      </a>
+      <a href="/admin/systems/assign_task" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">AssignTask</h3>
+        <p class="mt-2 text-sm text-neutral-400">Assigns a task to an active user</p>
+        <p class="mt-2 text-xs text-neutral-500">2 inputs &middot; POST /api/systems/assign_task</p>
+      </a>
+      <a href="/admin/systems/close_sprint" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">CloseSprint</h3>
+        <p class="mt-2 text-sm text-neutral-400">Deactivates a sprint and loads its remaining tasks for review</p>
+        <p class="mt-2 text-xs text-neutral-500">1 inputs &middot; POST /api/systems/close_sprint</p>
+      </a>
+      <a href="/admin/systems/log_billable_time" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">LogBillableTime</h3>
+        <p class="mt-2 text-sm text-neutral-400">Creates a time entry and sends a receipt email when billable</p>
+        <p class="mt-2 text-xs text-neutral-500">6 inputs &middot; POST /api/systems/log_billable_time</p>
+      </a>
+      <a href="/admin/systems/remove_comment" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">RemoveComment</h3>
+        <p class="mt-2 text-sm text-neutral-400">Deletes a comment after verifying the requesting user is the author</p>
+        <p class="mt-2 text-xs text-neutral-500">2 inputs &middot; POST /api/systems/remove_comment</p>
       </a>
     </div>
   </div>

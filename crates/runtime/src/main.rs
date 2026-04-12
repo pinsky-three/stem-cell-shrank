@@ -3,6 +3,7 @@ system_model_macro::system_model_file!("specs/systems.yaml");
 
 mod auth;
 mod email;
+mod integrations;
 mod migrate_auth;
 
 use std::net::SocketAddr;
@@ -89,6 +90,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Auth routes use AppState — resolve it before merging
     let auth_routes = auth::router().with_state(state);
 
+    // System endpoints — declarative workflows from systems.yaml
+    let system_routes = system_api::router(pool.clone(), integrations::AppIntegrations);
+
     // Health endpoints use PgPool state
     let health_routes = Router::new()
         .route("/healthz", get(resource_api::healthz))
@@ -113,6 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Router::new()
         .merge(api)
+        .merge(system_routes)
         .merge(auth_routes)
         .merge(health_routes)
         .merge(Scalar::with_url("/api/docs", openapi))

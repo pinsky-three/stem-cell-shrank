@@ -42,6 +42,40 @@ struct Relation {
     target: String,
 }
 
+// ── Minimal systems YAML types (mirrors system-model-macro/src/spec.rs) ──
+
+#[derive(Deserialize)]
+struct SystemsSpec {
+    #[allow(dead_code)]
+    version: u32,
+    #[serde(default)]
+    systems: Vec<SystemDef>,
+}
+
+#[derive(Deserialize)]
+struct SystemDef {
+    name: String,
+    description: String,
+    input: Vec<SystemInputField>,
+    #[serde(default)]
+    result: Vec<SystemResultField>,
+}
+
+#[derive(Deserialize)]
+struct SystemInputField {
+    name: String,
+    #[serde(rename = "type")]
+    ty: String,
+    required: bool,
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct SystemResultField {
+    name: String,
+    from: String,
+}
+
 fn main() {
     let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -50,10 +84,12 @@ fn main() {
 
     let frontend = workspace_root.join("frontend");
     let spec_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("specs/self.yaml");
+    let systems_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("specs/systems.yaml");
     let index = workspace_root.join("public/index.html");
 
     println!("cargo:rerun-if-changed={}", index.display());
     println!("cargo:rerun-if-changed={}", spec_path.display());
+    println!("cargo:rerun-if-changed={}", systems_path.display());
     println!("cargo:rerun-if-changed={}", frontend.join("src").display());
     println!(
         "cargo:rerun-if-changed={}",
@@ -70,7 +106,8 @@ fn main() {
     }
 
     let spec = load_spec(&spec_path);
-    generate_admin_pages(&spec, &frontend.join("src/pages/admin"));
+    let systems_spec = load_systems_spec(&systems_path);
+    generate_admin_pages(&spec, &systems_spec, &frontend.join("src/pages/admin"));
 
     if !frontend.join("node_modules").exists() {
         run("npm", &["install"], &frontend);
@@ -84,25 +121,18 @@ fn load_spec(path: &Path) -> Spec {
     serde_yaml::from_str(&yaml).unwrap_or_else(|e| panic!("cannot parse YAML: {e}"))
 }
 
-fn generate_admin_pages(spec: &Spec, pages_dir: &Path) {
-    // Clean previously generated pages (marked with @generated)
-    if pages_dir.exists() {
-        for entry in fs::read_dir(pages_dir).unwrap() {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            if path.extension().is_some_and(|e| e == "astro") {
-                if let Ok(content) = fs::read_to_string(&path) {
-                    if content.starts_with("<!-- @generated") {
-                        fs::remove_file(&path).ok();
-                    }
-                }
-            }
-        }
-    } else {
-        fs::create_dir_all(pages_dir).unwrap();
-    }
+fn load_systems_spec(path: &Path) -> SystemsSpec {
+    let yaml = fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {}: {e}", path.display()));
+    serde_yaml::from_str(&yaml).unwrap_or_else(|e| panic!("cannot parse systems YAML: {e}"))
+}
 
-    generate_dashboard(spec, pages_dir);
+fn generate_admin_pages(spec: &Spec, systems_spec: &SystemsSpec, pages_dir: &Path) {
+    clean_generated_pages(pages_dir);
+
+    let systems_dir = pages_dir.join("systems");
+    clean_generated_pages(&systems_dir);
+
+    generate_dashboard(spec, systems_spec, pages_dir);
 
     for entity in &spec.entities {
         let rels: Vec<&Relation> = spec
@@ -111,6 +141,27 @@ fn generate_admin_pages(spec: &Spec, pages_dir: &Path) {
             .filter(|r| r.source == entity.name && r.kind == "has_many")
             .collect();
         generate_entity_page(entity, &rels, pages_dir);
+    }
+
+    for system in &systems_spec.systems {
+        generate_system_page(system, &systems_dir);
+    }
+}
+
+fn clean_generated_pages(dir: &Path) {
+    if dir.exists() {
+        for entry in fs::read_dir(dir).unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if path.extension().is_some_and(|e| e == "astro")
+                && fs::read_to_string(&path)
+                    .is_ok_and(|c| c.starts_with("<!-- @generated"))
+            {
+                fs::remove_file(&path).ok();
+            }
+        }
+    } else {
+        fs::create_dir_all(dir).unwrap();
     }
 }
 
@@ -159,7 +210,7 @@ fn input_html(field: &Field) -> String {
     }
 }
 
-fn generate_dashboard(spec: &Spec, pages_dir: &Path) {
+fn generate_dashboard(spec: &Spec, systems_spec: &SystemsSpec, pages_dir: &Path) {
     let entity_cards: String = spec
         .entities
         .iter()
@@ -171,6 +222,25 @@ fn generate_dashboard(spec: &Spec, pages_dir: &Path) {
         <h3 class="text-lg font-semibold">{name}</h3>
         <p id="count-{table}" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
         <p class="mt-1 text-xs text-neutral-500">/admin/{table}</p>
+      </a>"#
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let system_cards: String = systems_spec
+        .systems
+        .iter()
+        .map(|s| {
+            let snake = to_snake_case(&s.name);
+            let name = &s.name;
+            let desc = &s.description;
+            let input_count = s.input.len();
+            format!(
+                r#"      <a href="/admin/systems/{snake}" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">{name}</h3>
+        <p class="mt-2 text-sm text-neutral-400">{desc}</p>
+        <p class="mt-2 text-xs text-neutral-500">{input_count} inputs &middot; POST /api/systems/{snake}</p>
       </a>"#
             )
         })
@@ -193,8 +263,21 @@ fn generate_dashboard(spec: &Spec, pages_dir: &Path) {
         .collect::<Vec<_>>()
         .join("\n");
 
+    let systems_section = if systems_spec.systems.is_empty() {
+        String::new()
+    } else {
+        format!(
+            r#"
+    <h2 class="mt-14 text-xl font-bold tracking-tight text-neutral-300">Systems</h2>
+    <p class="mt-1 text-sm text-neutral-500">Declarative business workflows generated from systems.yaml</p>
+    <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+{system_cards}
+    </div>"#
+        )
+    };
+
     let page = format!(
-        r#"<!-- @generated from specs/self.yaml — do not edit -->
+        r#"<!-- @generated from specs/self.yaml + systems.yaml — do not edit -->
 ---
 import Base from "../../layouts/Base.astro";
 ---
@@ -207,9 +290,11 @@ import Base from "../../layouts/Base.astro";
       </a>
     </div>
 
-    <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <h2 class="mt-10 text-xl font-bold tracking-tight text-neutral-300">Entities</h2>
+    <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 {entity_cards}
     </div>
+{systems_section}
   </div>
 
   <script>
@@ -450,6 +535,183 @@ import Base from "../../layouts/Base.astro";
     );
 
     let path = pages_dir.join(format!("{table}.astro"));
+    let mut f = fs::File::create(&path).unwrap();
+    f.write_all(page.as_bytes()).unwrap();
+}
+
+fn system_input_html(field: &SystemInputField) -> String {
+    let name = &field.name;
+    let required = if field.required { " required" } else { "" };
+    let label = name.replace('_', " ");
+    match field.ty.as_str() {
+        "bool" => format!(
+            r#"<label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="{name}" class="rounded border-neutral-600 bg-neutral-800 text-emerald-500 focus:ring-emerald-500" />
+              {label}
+            </label>"#
+        ),
+        "int" | "bigint" => format!(
+            r#"<div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-neutral-400">{label}</label>
+              <input type="number" name="{name}" placeholder="{name}" step="1"
+                class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"{required} />
+            </div>"#
+        ),
+        "float" => format!(
+            r#"<div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-neutral-400">{label}</label>
+              <input type="number" name="{name}" placeholder="{name}" step="any"
+                class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"{required} />
+            </div>"#
+        ),
+        "uuid" => format!(
+            r#"<div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-neutral-400">{label}</label>
+              <input type="text" name="{name}" placeholder="{name} (UUID)"
+                pattern="[0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}}"
+                class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"{required} />
+            </div>"#
+        ),
+        _ => format!(
+            r#"<div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-neutral-400">{label}</label>
+              <input type="text" name="{name}" placeholder="{name}"
+                class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"{required} />
+            </div>"#
+        ),
+    }
+}
+
+fn generate_system_page(system: &SystemDef, systems_dir: &Path) {
+    let snake = to_snake_case(&system.name);
+    let name = &system.name;
+    let desc = &system.description;
+
+    let form_fields: String = system
+        .input
+        .iter()
+        .map(|f| system_input_html(f))
+        .collect::<Vec<_>>()
+        .join("\n        ");
+
+    let read_fields: String = system
+        .input
+        .iter()
+        .map(|f| {
+            let n = &f.name;
+            match f.ty.as_str() {
+                "bool" => format!(r#"{n}: form.elements['{n}'].checked"#),
+                "int" | "bigint" => format!(r#"{n}: form.elements['{n}'].value ? Number(form.elements['{n}'].value) : null"#),
+                "float" => format!(r#"{n}: form.elements['{n}'].value ? parseFloat(form.elements['{n}'].value) : null"#),
+                _ => {
+                    if f.required {
+                        format!(r#"{n}: form.elements['{n}'].value"#)
+                    } else {
+                        format!(r#"{n}: form.elements['{n}'].value || null"#)
+                    }
+                }
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(",\n          ");
+
+    let result_fields_hint: String = if system.result.is_empty() {
+        "No result fields".to_string()
+    } else {
+        system
+            .result
+            .iter()
+            .map(|r| format!("{} (from {})", r.name, r.from))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+
+    let page = format!(
+        r##"<!-- @generated from specs/systems.yaml — do not edit -->
+---
+import Base from "../../../layouts/Base.astro";
+---
+<Base title="{name} | Systems" noindex={{true}}>
+  <div class="mx-auto max-w-3xl px-6 py-12">
+    <div class="flex items-center gap-4">
+      <a href="/admin" class="text-neutral-500 transition hover:text-neutral-300">&larr; Dashboard</a>
+      <h1 class="text-3xl font-bold tracking-tight">{name}</h1>
+    </div>
+    <p class="mt-2 text-sm text-neutral-400">{desc}</p>
+    <p class="mt-1 text-xs text-neutral-600">POST /api/systems/{snake}</p>
+
+    <form id="system-form" class="mt-8 flex flex-col gap-4">
+      <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 flex flex-col gap-4">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-500">Input</h2>
+        {form_fields}
+      </div>
+      <button type="submit" id="submit-btn"
+        class="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold transition hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed">
+        Execute
+      </button>
+    </form>
+
+    <div id="result-panel" class="mt-6 hidden">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-2">Result</h2>
+      <p class="text-xs text-neutral-600 mb-2">{result_fields_hint}</p>
+      <pre id="result-body"
+        class="overflow-auto rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-xs text-neutral-300 max-h-96"></pre>
+    </div>
+
+    <div id="error-panel" class="mt-6 hidden">
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-red-400 mb-2">Error</h2>
+      <pre id="error-body"
+        class="overflow-auto rounded-xl border border-red-900/50 bg-red-950/30 p-4 text-xs text-red-300 max-h-96"></pre>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('system-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const resultPanel = document.getElementById('result-panel');
+    const resultBody = document.getElementById('result-body');
+    const errorPanel = document.getElementById('error-panel');
+    const errorBody = document.getElementById('error-body');
+
+    form.addEventListener('submit', async (e) => {{
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Executing...';
+      resultPanel.classList.add('hidden');
+      errorPanel.classList.add('hidden');
+
+      const body = {{
+          {read_fields}
+      }};
+
+      try {{
+        const res = await fetch('/api/systems/{snake}', {{
+          method: 'POST',
+          headers: {{ 'Content-Type': 'application/json' }},
+          body: JSON.stringify(body),
+        }});
+        const data = await res.json();
+        if (res.ok) {{
+          resultBody.textContent = JSON.stringify(data, null, 2);
+          resultPanel.classList.remove('hidden');
+        }} else {{
+          errorBody.textContent = JSON.stringify(data, null, 2);
+          errorPanel.classList.remove('hidden');
+        }}
+      }} catch (err) {{
+        errorBody.textContent = err.message;
+        errorPanel.classList.remove('hidden');
+      }} finally {{
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Execute';
+      }}
+    }});
+  </script>
+</Base>
+"##
+    );
+
+    let path = systems_dir.join(format!("{snake}.astro"));
     let mut f = fs::File::create(&path).unwrap();
     f.write_all(page.as_bytes()).unwrap();
 }

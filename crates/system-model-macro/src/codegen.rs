@@ -122,6 +122,7 @@ pub fn generate(spec: &SystemsSpec) -> TokenStream {
         .iter()
         .map(|s| generate_system(s, spec))
         .collect();
+    let router_code = generate_systems_router(spec);
 
     quote! {
         pub mod system_api {
@@ -131,6 +132,132 @@ pub fn generate(spec: &SystemsSpec) -> TokenStream {
             #integration_code
             #event_code
             #(#system_code)*
+            #router_code
+        }
+    }
+}
+
+// ── Router + handler generation ─────────────────────────────────────────
+
+fn generate_systems_router(spec: &SystemsSpec) -> TokenStream {
+    if spec.systems.is_empty() {
+        return quote! {};
+    }
+
+    let has_registry = !spec.integrations.is_empty();
+    let any_system_uses_integrations = has_registry
+        && spec
+            .systems
+            .iter()
+            .any(|s| steps_use_integration(&s.steps));
+
+    let mut handler_fns = Vec::new();
+    let mut route_registrations = Vec::new();
+
+    for system in &spec.systems {
+        let snake = to_snake_case(&system.name);
+        let handler_name = format_ident!("handle_{}", snake);
+        let executor_name = format_ident!("execute_{}", snake);
+        let input_type = format_ident!("{}Input", system.name);
+        let result_type = format_ident!("{}Result", system.name);
+        let route_path = format!("/api/systems/{}", snake);
+
+        let uses_integrations = has_registry && steps_use_integration(&system.steps);
+        let uses_events = steps_use_events(&system.steps);
+
+        let execute_args = {
+            let mut args = vec![quote! { &state.pool }];
+            if uses_integrations {
+                args.push(quote! { &state.integrations });
+            }
+            if uses_events {
+                args.push(quote! { &NoopEventBus });
+            }
+            args.push(quote! { input });
+            args
+        };
+
+        if has_registry {
+            handler_fns.push(quote! {
+                async fn #handler_name<I: IntegrationRegistry + 'static>(
+                    axum::extract::State(state): axum::extract::State<SystemsState<I>>,
+                    axum::Json(input): axum::Json<#input_type>,
+                ) -> Result<axum::Json<#result_type>, SystemError> {
+                    let result = #executor_name(#(#execute_args),*).await?;
+                    Ok(axum::Json(result))
+                }
+            });
+            route_registrations.push(quote! {
+                .route(#route_path, axum::routing::post(#handler_name::<I>))
+            });
+        } else {
+            handler_fns.push(quote! {
+                async fn #handler_name(
+                    axum::extract::State(state): axum::extract::State<SystemsState>,
+                    axum::Json(input): axum::Json<#input_type>,
+                ) -> Result<axum::Json<#result_type>, SystemError> {
+                    let result = #executor_name(#(#execute_args),*).await?;
+                    Ok(axum::Json(result))
+                }
+            });
+            route_registrations.push(quote! {
+                .route(#route_path, axum::routing::post(#handler_name))
+            });
+        }
+    }
+
+    if has_registry {
+        let integrations_field = if any_system_uses_integrations {
+            quote! { pub integrations: I, }
+        } else {
+            quote! { _integrations: std::marker::PhantomData<I>, }
+        };
+
+        let router_param = if any_system_uses_integrations {
+            quote! { pool: sqlx::PgPool, integrations: I }
+        } else {
+            quote! { pool: sqlx::PgPool }
+        };
+
+        let state_init = if any_system_uses_integrations {
+            quote! { SystemsState { pool, integrations } }
+        } else {
+            quote! { SystemsState { pool, _integrations: std::marker::PhantomData } }
+        };
+
+        quote! {
+            #[derive(Clone)]
+            pub struct SystemsState<I: IntegrationRegistry> {
+                pub pool: sqlx::PgPool,
+                #integrations_field
+            }
+
+            pub fn router<I: IntegrationRegistry + Clone + 'static>(
+                #router_param,
+            ) -> axum::Router {
+                let state = #state_init;
+                axum::Router::new()
+                    #(#route_registrations)*
+                    .with_state(state)
+            }
+
+            #(#handler_fns)*
+        }
+    } else {
+        quote! {
+            #[derive(Clone)]
+            pub struct SystemsState {
+                pub pool: sqlx::PgPool,
+            }
+
+            pub fn router(pool: sqlx::PgPool) -> axum::Router {
+                let state = SystemsState { pool };
+                axum::Router::new()
+                    #(#route_registrations)*
+                    .with_state(state)
+            }
+
+            #(#handler_fns)*
         }
     }
 }
@@ -469,7 +596,7 @@ fn generate_result_struct(
 fn generate_executor_fn(
     system: &SystemDef,
     body: &[TokenStream],
-    spec: &SystemsSpec,
+    _spec: &SystemsSpec,
 ) -> TokenStream {
     let fn_name = format_ident!("execute_{}", to_snake_case(&system.name));
     let input_name = format_ident!("{}Input", system.name);
@@ -495,11 +622,8 @@ fn generate_executor_fn(
         }
     };
 
-    let has_integrations = !spec.integrations.is_empty();
-    let has_events = system
-        .steps
-        .iter()
-        .any(|s| matches!(s, Step::EmitEvent(_)));
+    let has_integrations = steps_use_integration(&system.steps);
+    let has_events = steps_use_events(&system.steps);
 
     let (i_bound, i_param, _i_arg) = if has_integrations {
         (
@@ -534,6 +658,32 @@ fn generate_executor_fn(
             Ok(#result_expr)
         }
     }
+}
+
+// ── Step introspection ──────────────────────────────────────────────────
+
+fn steps_use_integration(steps: &[Step]) -> bool {
+    steps.iter().any(|s| match s {
+        Step::CallIntegration(_) => true,
+        Step::Branch(b) => {
+            steps_use_integration(&b.then)
+                || b.otherwise
+                    .as_ref()
+                    .is_some_and(|e| steps_use_integration(e))
+        }
+        _ => false,
+    })
+}
+
+fn steps_use_events(steps: &[Step]) -> bool {
+    steps.iter().any(|s| match s {
+        Step::EmitEvent(_) => true,
+        Step::Branch(b) => {
+            steps_use_events(&b.then)
+                || b.otherwise.as_ref().is_some_and(|e| steps_use_events(e))
+        }
+        _ => false,
+    })
 }
 
 // ── Step codegen ────────────────────────────────────────────────────────
