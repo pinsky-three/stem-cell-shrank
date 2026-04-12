@@ -1,0 +1,281 @@
+version: 1
+
+# ────────────────────────────────────────────────────────────────
+# Integrations — external provider contracts
+# Each operation defines typed input/output that the user must
+# implement via a generated trait. The system executor calls
+# these traits automatically during workflow execution.
+# ────────────────────────────────────────────────────────────────
+
+integrations:
+
+  - name: "payment_provider"
+    operations:
+      - name: "create_charge"
+        input:
+          - { name: "amount_cents", type: "bigint" }
+          - { name: "currency",     type: "string" }
+          - { name: "reference",    type: "string" }
+        output:
+          - { name: "charge_id", type: "string" }
+          - { name: "status",    type: "string" }
+
+  - name: "notification_provider"
+    operations:
+      - name: "send_email"
+        input:
+          - { name: "to",      type: "string" }
+          - { name: "subject", type: "string" }
+          - { name: "body",    type: "string" }
+        output:
+          - { name: "message_id", type: "string" }
+
+# ────────────────────────────────────────────────────────────────
+# Systems — declarative business workflows
+#
+# Each system compiles to: Input/Result DTOs, an async executor
+# function, typed integration calls, and event scaffolding.
+#
+# Phase 2 step kinds:
+#   load_one · load_many · create · update · delete
+#   guard · branch · call_integration · emit_event
+# ────────────────────────────────────────────────────────────────
+
+systems:
+
+  # ── 1. Record a payment against an invoice ──────────────────
+  # Exercises: load_one, guard, call_integration, create, update, emit_event
+  - name: "RecordInvoicePayment"
+    description: "Processes a payment charge, records it, and marks the invoice as paid"
+    input:
+      - { name: "invoice_id",    type: "uuid",   required: true  }
+      - { name: "amount_cents",  type: "bigint", required: true  }
+      - { name: "currency",      type: "string", required: true  }
+      - { name: "method",        type: "string", required: true  }
+      - { name: "reference_code", type: "string", required: false }
+      - { name: "notes",         type: "string", required: false }
+    steps:
+      - kind: "load_one"
+        entity: "Invoice"
+        by: "input.invoice_id"
+        as: "invoice"
+        not_found: "Invoice not found"
+
+      - kind: "guard"
+        check: { field: "invoice.paid", equals: false }
+        error: "Invoice is already paid"
+
+      - kind: "load_one"
+        entity: "Contract"
+        by: "invoice.contract_id"
+        as: "contract"
+        not_found: "Associated contract not found"
+
+      - kind: "call_integration"
+        integration: "payment_provider"
+        operation: "create_charge"
+        input:
+          - { param: "amount_cents", from: "input.amount_cents" }
+          - { param: "currency",     from: "input.currency" }
+          - { param: "reference",    from: "invoice.invoice_number" }
+        as: "charge"
+
+      - kind: "create"
+        entity: "Payment"
+        set:
+          - { field: "invoice_id",    from: "input.invoice_id" }
+          - { field: "amount_cents",  from: "input.amount_cents" }
+          - { field: "currency",      from: "input.currency" }
+          - { field: "method",        from: "input.method" }
+          - { field: "reference_code", from: "input.reference_code" }
+          - { field: "notes",         from: "input.notes" }
+        as: "payment"
+
+      - kind: "update"
+        entity: "Invoice"
+        target: "invoice.id"
+        set:
+          - { field: "paid",   value: true }
+          - { field: "status", value: "paid" }
+
+      - kind: "emit_event"
+        event: "invoice_payment_recorded"
+        payload:
+          - { field: "invoice_id", from: "invoice.id" }
+          - { field: "payment_id", from: "payment.id" }
+          - { field: "charge_id",  from: "charge.charge_id" }
+
+    result:
+      - { name: "payment", from: "payment" }
+      - { name: "invoice", from: "invoice" }
+
+  # ── 2. Assign a task to an active user ──────────────────────
+  # Exercises: load_one ×2, guard, update, emit_event
+  - name: "AssignTask"
+    description: "Assigns a task to an active user"
+    input:
+      - { name: "task_id",     type: "uuid", required: true }
+      - { name: "assignee_id", type: "uuid", required: true }
+    steps:
+      - kind: "load_one"
+        entity: "Task"
+        by: "input.task_id"
+        as: "task"
+        not_found: "Task not found"
+
+      - kind: "load_one"
+        entity: "User"
+        by: "input.assignee_id"
+        as: "assignee"
+        not_found: "Assignee not found"
+
+      - kind: "guard"
+        check: { field: "assignee.active", equals: true }
+        error: "Cannot assign task to an inactive user"
+
+      - kind: "update"
+        entity: "Task"
+        target: "task.id"
+        set:
+          - { field: "assignee_id", from: "input.assignee_id" }
+
+      - kind: "emit_event"
+        event: "task_assigned"
+        payload:
+          - { field: "task_id",     from: "task.id" }
+          - { field: "assignee_id", from: "assignee.id" }
+          - { field: "project_id",  from: "task.project_id" }
+
+    result:
+      - { name: "task", from: "task" }
+
+  # ── 3. Close a sprint ──────────────────────────────────────
+  # Exercises: load_one, guard, load_many, update, emit_event
+  - name: "CloseSprint"
+    description: "Deactivates a sprint and loads its remaining tasks for review"
+    input:
+      - { name: "sprint_id", type: "uuid", required: true }
+    steps:
+      - kind: "load_one"
+        entity: "Sprint"
+        by: "input.sprint_id"
+        as: "sprint"
+        not_found: "Sprint not found"
+
+      - kind: "guard"
+        check: { field: "sprint.active", equals: true }
+        error: "Sprint is already closed"
+
+      - kind: "load_many"
+        entity: "Task"
+        filter: { field: "sprint_id", from: "sprint.id" }
+        as: "sprint_tasks"
+
+      - kind: "update"
+        entity: "Sprint"
+        target: "sprint.id"
+        set:
+          - { field: "active", value: false }
+
+      - kind: "emit_event"
+        event: "sprint_closed"
+        payload:
+          - { field: "sprint_id",  from: "sprint.id" }
+          - { field: "project_id", from: "sprint.project_id" }
+
+    result:
+      - { name: "sprint",      from: "sprint" }
+      - { name: "sprint_tasks", from: "sprint_tasks" }
+
+  # ── 4. Log billable time with optional notification ─────────
+  # Exercises: load_one ×2, guard, create, branch + call_integration, emit_event
+  - name: "LogBillableTime"
+    description: "Creates a time entry and sends a receipt email when billable"
+    input:
+      - { name: "task_id",     type: "uuid",   required: true  }
+      - { name: "user_id",     type: "uuid",   required: true  }
+      - { name: "hours",       type: "float",  required: true  }
+      - { name: "description", type: "string", required: false }
+      - { name: "billable",    type: "bool",   required: true  }
+      - { name: "rate_cents",  type: "bigint", required: false }
+    steps:
+      - kind: "load_one"
+        entity: "Task"
+        by: "input.task_id"
+        as: "task"
+        not_found: "Task not found"
+
+      - kind: "load_one"
+        entity: "User"
+        by: "input.user_id"
+        as: "worker"
+        not_found: "User not found"
+
+      - kind: "guard"
+        check: { field: "task.done", equals: false }
+        error: "Cannot log time on a completed task"
+
+      - kind: "create"
+        entity: "TimeEntry"
+        set:
+          - { field: "task_id",     from: "input.task_id" }
+          - { field: "user_id",     from: "input.user_id" }
+          - { field: "project_id",  from: "task.project_id" }
+          - { field: "hours",       from: "input.hours" }
+          - { field: "description", from: "input.description" }
+          - { field: "billable",    from: "input.billable" }
+          - { field: "rate_cents",  from: "input.rate_cents" }
+        as: "time_entry"
+
+      - kind: "branch"
+        check: { field: "input.billable", equals: true }
+        then:
+          - kind: "call_integration"
+            integration: "notification_provider"
+            operation: "send_email"
+            input:
+              - { param: "to",      from: "worker.email" }
+              - { param: "subject", value: "Billable time logged" }
+              - { param: "body",    from: "task.title" }
+            as: "email_receipt"
+
+      - kind: "emit_event"
+        event: "time_entry_created"
+        payload:
+          - { field: "time_entry_id", from: "time_entry.id" }
+          - { field: "task_id",       from: "task.id" }
+          - { field: "billable",      from: "time_entry.billable" }
+
+    result:
+      - { name: "time_entry", from: "time_entry" }
+
+  # ── 5. Remove a comment (author-only) ──────────────────────
+  # Exercises: load_one ×2, guard (field-to-field), delete, emit_event
+  - name: "RemoveComment"
+    description: "Deletes a comment after verifying the requesting user is the author"
+    input:
+      - { name: "comment_id", type: "uuid", required: true }
+      - { name: "user_id",    type: "uuid", required: true }
+    steps:
+      - kind: "load_one"
+        entity: "Comment"
+        by: "input.comment_id"
+        as: "comment"
+        not_found: "Comment not found"
+
+      - kind: "guard"
+        check: { field: "comment.author_id", equals_field: "input.user_id" }
+        error: "Only the author can delete this comment"
+
+      - kind: "delete"
+        entity: "Comment"
+        target: "comment.id"
+
+      - kind: "emit_event"
+        event: "comment_removed"
+        payload:
+          - { field: "comment_id", from: "comment.id" }
+          - { field: "task_id",    from: "comment.task_id" }
+          - { field: "author_id",  from: "comment.author_id" }
+
+    result: []

@@ -1,3 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["crates/resource-model-macro", "crates/runtime"]
+members = [
+    "crates/resource-model-macro",
+    "crates/system-model-macro",
+    "crates/runtime",
+]

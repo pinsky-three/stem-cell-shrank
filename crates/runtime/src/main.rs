@@ -1,4 +1,5 @@
 resource_model_macro::resource_model_file!("specs/self.yaml");
+system_model_macro::system_model_file!("specs/systems.yaml");
 
 mod auth;
 mod email;
@@ -7,8 +8,8 @@ mod migrate_auth;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::routing::get;
 use axum::Router;
+use axum::routing::get;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::services::ServeDir;
@@ -24,9 +25,10 @@ use email::EmailService;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            "stem_cell=info,tower_http=info".into()
-        }))
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "stem_cell=info,tower_http=info".into()),
+        )
         .with(tracing_subscriber::fmt::layer().json())
         .init();
 

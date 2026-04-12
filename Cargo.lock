@@ -2276,6 +2276,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sqlx",
+ "system-model-macro",
  "thiserror 2.0.18",
  "time",
  "tokio",
@@ -2344,6 +2345,17 @@ checksum = "728a70f3dbaf5bab7f0c4b1ac8d7ae5ea60a4b5549c8a5914361c99147a709d2"
 dependencies = [
  "proc-macro2",
  "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "system-model-macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_yaml",
  "syn 2.0.117",
 ]
 
