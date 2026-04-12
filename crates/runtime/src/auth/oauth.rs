@@ -7,10 +7,10 @@ use oauth2::{
 };
 use serde::Deserialize;
 
+use super::AppState;
 use super::config::OAuthProviderConfig;
 use super::repository;
-use super::routes::{session_cookie, AuthError};
-use super::AppState;
+use super::routes::{AuthError, session_cookie};
 
 struct ProviderUrls {
     auth_url: &'static str,
@@ -62,21 +62,19 @@ pub async fn oauth_redirect(
         state.auth_config.app_url, provider
     );
 
-    let client = oauth2::basic::BasicClient::new(ClientId::new(
-        provider_config.client_id.clone(),
-    ))
-    .set_client_secret(ClientSecret::new(provider_config.client_secret.clone()))
-    .set_auth_uri(
-        AuthUrl::new(urls.auth_url.to_string())
-            .map_err(|e| AuthError::Internal(e.to_string()))?,
-    )
-    .set_token_uri(
-        TokenUrl::new(urls.token_url.to_string())
-            .map_err(|e| AuthError::Internal(e.to_string()))?,
-    )
-    .set_redirect_uri(
-        RedirectUrl::new(redirect_url).map_err(|e| AuthError::Internal(e.to_string()))?,
-    );
+    let client = oauth2::basic::BasicClient::new(ClientId::new(provider_config.client_id.clone()))
+        .set_client_secret(ClientSecret::new(provider_config.client_secret.clone()))
+        .set_auth_uri(
+            AuthUrl::new(urls.auth_url.to_string())
+                .map_err(|e| AuthError::Internal(e.to_string()))?,
+        )
+        .set_token_uri(
+            TokenUrl::new(urls.token_url.to_string())
+                .map_err(|e| AuthError::Internal(e.to_string()))?,
+        )
+        .set_redirect_uri(
+            RedirectUrl::new(redirect_url).map_err(|e| AuthError::Internal(e.to_string()))?,
+        );
 
     let mut auth_request = client.authorize_url(CsrfToken::new_random);
     for scope in urls.scopes {
@@ -112,21 +110,19 @@ pub async fn oauth_callback(
         state.auth_config.app_url, provider
     );
 
-    let client = oauth2::basic::BasicClient::new(ClientId::new(
-        provider_config.client_id.clone(),
-    ))
-    .set_client_secret(ClientSecret::new(provider_config.client_secret.clone()))
-    .set_auth_uri(
-        AuthUrl::new(urls.auth_url.to_string())
-            .map_err(|e| AuthError::Internal(e.to_string()))?,
-    )
-    .set_token_uri(
-        TokenUrl::new(urls.token_url.to_string())
-            .map_err(|e| AuthError::Internal(e.to_string()))?,
-    )
-    .set_redirect_uri(
-        RedirectUrl::new(redirect_url).map_err(|e| AuthError::Internal(e.to_string()))?,
-    );
+    let client = oauth2::basic::BasicClient::new(ClientId::new(provider_config.client_id.clone()))
+        .set_client_secret(ClientSecret::new(provider_config.client_secret.clone()))
+        .set_auth_uri(
+            AuthUrl::new(urls.auth_url.to_string())
+                .map_err(|e| AuthError::Internal(e.to_string()))?,
+        )
+        .set_token_uri(
+            TokenUrl::new(urls.token_url.to_string())
+                .map_err(|e| AuthError::Internal(e.to_string()))?,
+        )
+        .set_redirect_uri(
+            RedirectUrl::new(redirect_url).map_err(|e| AuthError::Internal(e.to_string()))?,
+        );
 
     let http_client = oauth2::reqwest::ClientBuilder::new()
         .build()
@@ -153,10 +149,9 @@ pub async fn oauth_callback(
             .await
             .map_err(|e| AuthError::Internal(e.to_string()))?
             .ok_or_else(|| AuthError::Internal("linked account not found".to_string()))?
-    } else if let Some(existing) =
-        repository::find_account_by_email(&state.pool, &user_info.email)
-            .await
-            .map_err(|e| AuthError::Internal(e.to_string()))?
+    } else if let Some(existing) = repository::find_account_by_email(&state.pool, &user_info.email)
+        .await
+        .map_err(|e| AuthError::Internal(e.to_string()))?
     {
         existing
     } else {
