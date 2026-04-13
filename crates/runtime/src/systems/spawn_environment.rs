@@ -238,8 +238,52 @@ async fn flush_logs(pool: &sqlx::PgPool, job_id: uuid::Uuid, logs: &str) {
     }
 }
 
-/// Runs the container with streaming output, flushing logs to the DB periodically.
+/// Dispatch based on SPAWN_MODE env var: "subprocess" runs directly,
+/// anything else (including unset) uses a container runtime.
 async fn run_container_streaming(
+    repo_url: &str,
+    job_id: uuid::Uuid,
+    pool: &sqlx::PgPool,
+) -> Result<(), String> {
+    let mode = std::env::var("SPAWN_MODE").unwrap_or_default();
+    if mode == "subprocess" {
+        run_subprocess_streaming(repo_url, job_id, pool).await
+    } else {
+        run_in_container_streaming(repo_url, job_id, pool).await
+    }
+}
+
+/// Subprocess mode: clone + build directly on the host (no isolation).
+/// Used on platforms like Railway where nested containers aren't allowed.
+async fn run_subprocess_streaming(
+    repo_url: &str,
+    job_id: uuid::Uuid,
+    pool: &sqlx::PgPool,
+) -> Result<(), String> {
+    let work_dir = format!("/tmp/stem-cell-{job_id}");
+
+    let script = format!(
+        "set -e && \
+         git clone {repo} {dir} && cd {dir} && \
+         if command -v mise >/dev/null 2>&1; then \
+           mise install --yes && mise run dev; \
+         elif [ -x ~/.local/bin/mise ]; then \
+           ~/.local/bin/mise install --yes && ~/.local/bin/mise run dev; \
+         else \
+           curl -fsSL https://mise.run | bash && \
+           ~/.local/bin/mise install --yes && ~/.local/bin/mise run dev; \
+         fi",
+        repo = repo_url,
+        dir = work_dir,
+    );
+
+    tracing::info!(%repo_url, mode = "subprocess", "starting build");
+
+    spawn_and_stream("bash", &["-c", &script], job_id, pool).await
+}
+
+/// Container mode: runs the build inside an isolated container.
+async fn run_in_container_streaming(
     repo_url: &str,
     job_id: uuid::Uuid,
     pool: &sqlx::PgPool,
@@ -256,10 +300,11 @@ async fn run_container_streaming(
         repo = repo_url,
     );
 
-    tracing::info!(%repo_url, %runtime, "starting container");
+    tracing::info!(%repo_url, %runtime, mode = "container", "starting build");
 
-    let mut child = tokio::process::Command::new(runtime)
-        .args([
+    spawn_and_stream(
+        runtime,
+        &[
             "run",
             "--rm",
             &format!("--memory={CONTAINER_MEMORY_LIMIT}"),
@@ -268,11 +313,28 @@ async fn run_container_streaming(
             "bash",
             "-c",
             &script,
-        ])
+        ],
+        job_id,
+        pool,
+    )
+    .await
+}
+
+/// Shared streaming logic: spawns a process, reads stdout/stderr line-by-line,
+/// and flushes the log buffer to the DB every LOG_FLUSH_INTERVAL.
+async fn spawn_and_stream(
+    program: &str,
+    args: &[&str],
+    job_id: uuid::Uuid,
+    pool: &sqlx::PgPool,
+) -> Result<(), String> {
+    let mut child = tokio::process::Command::new(program)
+        .args(args)
+        .env("MISE_YES", "1")
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
-        .map_err(|e| format!("failed to start {runtime}: {e}"))?;
+        .map_err(|e| format!("failed to start {program}: {e}"))?;
 
     let stdout = child.stdout.take().unwrap();
     let stderr = child.stderr.take().unwrap();
@@ -283,7 +345,7 @@ async fn run_container_streaming(
     let mut log_buf = String::new();
     let mut dirty = false;
     let mut flush_timer = tokio::time::interval(LOG_FLUSH_INTERVAL);
-    flush_timer.tick().await; // consume the immediate first tick
+    flush_timer.tick().await;
 
     loop {
         tokio::select! {
@@ -296,7 +358,7 @@ async fn run_container_streaming(
                             dirty = true;
                         }
                     }
-                    Ok(None) => break, // stdout closed → process exiting
+                    Ok(None) => break,
                     Err(_) => break,
                 }
             }
@@ -322,7 +384,6 @@ async fn run_container_streaming(
         }
     }
 
-    // Final flush of any remaining lines
     if dirty {
         flush_logs(pool, job_id, &log_buf).await;
     }
@@ -330,12 +391,19 @@ async fn run_container_streaming(
     let status = child
         .wait()
         .await
-        .map_err(|e| format!("failed to wait on container: {e}"))?;
+        .map_err(|e| format!("failed to wait on process: {e}"))?;
 
     if status.success() {
         Ok(())
     } else {
-        let tail: String = log_buf.chars().rev().take(500).collect::<String>().chars().rev().collect();
-        Err(format!("{runtime} exited with {status}: …{tail}"))
+        let tail: String = log_buf
+            .chars()
+            .rev()
+            .take(500)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect();
+        Err(format!("{program} exited with {status}: …{tail}"))
     }
 }
