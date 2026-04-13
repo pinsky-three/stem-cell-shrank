@@ -222,7 +222,8 @@ async fn run_container(repo_url: &str) -> Result<(), String> {
     let runtime = detect_runtime().await?;
 
     let script = format!(
-        "git clone {repo} /work && cd /work && \
+        "apk add --no-cache git curl bash && \
+         git clone {repo} /work && cd /work && \
          curl -fsSL https://mise.run | sh && \
          ~/.local/bin/mise install --yes && \
          ~/.local/bin/mise run dev",
@@ -237,7 +238,7 @@ async fn run_container(repo_url: &str) -> Result<(), String> {
             "--rm",
             &format!("--memory={CONTAINER_MEMORY_LIMIT}"),
             "--network=host",
-            "docker.io/alpine/git",
+            "docker.io/library/alpine:3.20",
             "sh",
             "-c",
             &script,
