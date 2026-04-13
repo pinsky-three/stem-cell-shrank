@@ -6,7 +6,8 @@ use std::time::Duration;
 const DEFAULT_REPO_URL: &str = "https://github.com/pinsky-three/stem-cell";
 
 /// Memory limit for spawned sub-containers (prevents OOM on Railway).
-const CONTAINER_MEMORY_LIMIT: &str = "256m";
+/// Needs headroom for rustup component downloads + cargo build.
+const CONTAINER_MEMORY_LIMIT: &str = "2g";
 
 /// Max time allowed for the synchronous handler work (DB inserts).
 /// If the pool is starved or PG is slow, the caller gets an error instead of
@@ -222,9 +223,10 @@ async fn run_container(repo_url: &str) -> Result<(), String> {
     let runtime = detect_runtime().await?;
 
     let script = format!(
-        "apk add --no-cache git curl bash && \
+        "apt-get update && apt-get install -y --no-install-recommends \
+             git curl ca-certificates build-essential pkg-config libssl-dev && \
          git clone {repo} /work && cd /work && \
-         curl -fsSL https://mise.run | sh && \
+         curl -fsSL https://mise.run | bash && \
          ~/.local/bin/mise install --yes && \
          ~/.local/bin/mise run dev",
         repo = repo_url,
@@ -238,8 +240,8 @@ async fn run_container(repo_url: &str) -> Result<(), String> {
             "--rm",
             &format!("--memory={CONTAINER_MEMORY_LIMIT}"),
             "--network=host",
-            "docker.io/library/alpine:3.20",
-            "sh",
+            "docker.io/library/debian:bookworm-slim",
+            "bash",
             "-c",
             &script,
         ])
