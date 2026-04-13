@@ -154,6 +154,7 @@ systems:
           - { field: "tokens_used",    value: 0 }
           - { field: "error_message",  value: "" }
           - { field: "duration_ms",    value: 0 }
+          - { field: "logs",           value: "" }
           - { field: "project_id",     from: "project.id" }
           - { field: "message_id",     from: "message.id" }
         as: "build_job"

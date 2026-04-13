@@ -1,5 +1,6 @@
 use crate::system_api::*;
 use std::time::Duration;
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 /// MVP: hardcoded repo to clone inside the container.
 /// Move to env var or input field when ready.
@@ -127,8 +128,8 @@ async fn create_records(
     sqlx::query(
         "INSERT INTO build_jobs \
              (id, status, prompt_summary, model, tokens_used, error_message, \
-              duration_ms, project_id, message_id, created_at, updated_at) \
-         VALUES ($1, 'running', $2, 'container', 0, '', 0, $3, $4, NOW(), NOW())",
+              duration_ms, logs, project_id, message_id, created_at, updated_at) \
+         VALUES ($1, 'running', $2, 'container', 0, '', 0, '', $3, $4, NOW(), NOW())",
     )
     .bind(job_id)
     .bind(&input.prompt)
@@ -140,14 +141,13 @@ async fn create_records(
 
     tracing::info!(%project_id, %job_id, "project and job created, spawning container");
 
-    // Spawn background task with its own timeout
     let bg_pool = pool.clone();
     tokio::spawn(async move {
         let started = std::time::Instant::now();
 
         let result = match tokio::time::timeout(
             CONTAINER_TIMEOUT,
-            run_container(DEFAULT_REPO_URL),
+            run_container_streaming(DEFAULT_REPO_URL, job_id, &bg_pool),
         )
         .await
         {
@@ -218,8 +218,32 @@ async fn detect_runtime() -> Result<&'static str, String> {
     Err("neither podman nor docker found in PATH".into())
 }
 
-/// Runs the container (called inside tokio::spawn).
-async fn run_container(repo_url: &str) -> Result<(), String> {
+/// How often we flush accumulated log lines to the database.
+const LOG_FLUSH_INTERVAL: Duration = Duration::from_secs(2);
+
+/// Max log size stored per job (prevents unbounded growth).
+const MAX_LOG_BYTES: usize = 512 * 1024;
+
+/// Flush the current log buffer to the `logs` column.
+async fn flush_logs(pool: &sqlx::PgPool, job_id: uuid::Uuid, logs: &str) {
+    if let Err(e) = sqlx::query(
+        "UPDATE build_jobs SET logs = $2, updated_at = NOW() WHERE id = $1",
+    )
+    .bind(job_id)
+    .bind(logs)
+    .execute(pool)
+    .await
+    {
+        tracing::warn!(%job_id, error = %e, "failed to flush logs");
+    }
+}
+
+/// Runs the container with streaming output, flushing logs to the DB periodically.
+async fn run_container_streaming(
+    repo_url: &str,
+    job_id: uuid::Uuid,
+    pool: &sqlx::PgPool,
+) -> Result<(), String> {
     let runtime = detect_runtime().await?;
 
     let script = format!(
@@ -234,7 +258,7 @@ async fn run_container(repo_url: &str) -> Result<(), String> {
 
     tracing::info!(%repo_url, %runtime, "starting container");
 
-    let output = tokio::process::Command::new(runtime)
+    let mut child = tokio::process::Command::new(runtime)
         .args([
             "run",
             "--rm",
@@ -245,18 +269,73 @@ async fn run_container(repo_url: &str) -> Result<(), String> {
             "-c",
             &script,
         ])
-        .output()
-        .await
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
         .map_err(|e| format!("failed to start {runtime}: {e}"))?;
 
-    if output.status.success() {
+    let stdout = child.stdout.take().unwrap();
+    let stderr = child.stderr.take().unwrap();
+
+    let mut stdout_reader = BufReader::new(stdout).lines();
+    let mut stderr_reader = BufReader::new(stderr).lines();
+
+    let mut log_buf = String::new();
+    let mut dirty = false;
+    let mut flush_timer = tokio::time::interval(LOG_FLUSH_INTERVAL);
+    flush_timer.tick().await; // consume the immediate first tick
+
+    loop {
+        tokio::select! {
+            line = stdout_reader.next_line() => {
+                match line {
+                    Ok(Some(l)) => {
+                        if log_buf.len() < MAX_LOG_BYTES {
+                            log_buf.push_str(&l);
+                            log_buf.push('\n');
+                            dirty = true;
+                        }
+                    }
+                    Ok(None) => break, // stdout closed → process exiting
+                    Err(_) => break,
+                }
+            }
+            line = stderr_reader.next_line() => {
+                match line {
+                    Ok(Some(l)) => {
+                        if log_buf.len() < MAX_LOG_BYTES {
+                            log_buf.push_str(&l);
+                            log_buf.push('\n');
+                            dirty = true;
+                        }
+                    }
+                    Ok(None) => break,
+                    Err(_) => break,
+                }
+            }
+            _ = flush_timer.tick() => {
+                if dirty {
+                    flush_logs(pool, job_id, &log_buf).await;
+                    dirty = false;
+                }
+            }
+        }
+    }
+
+    // Final flush of any remaining lines
+    if dirty {
+        flush_logs(pool, job_id, &log_buf).await;
+    }
+
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("failed to wait on container: {e}"))?;
+
+    if status.success() {
         Ok(())
     } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        Err(format!(
-            "{runtime} exited with {}: stderr={stderr}, stdout={stdout}",
-            output.status
-        ))
+        let tail: String = log_buf.chars().rev().take(500).collect::<String>().chars().rev().collect();
+        Err(format!("{runtime} exited with {status}: …{tail}"))
     }
 }

@@ -144,6 +144,7 @@ entities:
       - { name: "tokens_used",    type: "bigint", required: true }
       - { name: "error_message",  type: "string", required: true }
       - { name: "duration_ms",    type: "bigint", required: true }
+      - { name: "logs",           type: "text",   required: true }
       - name: "project_id"
         type: "uuid"
         required: true
