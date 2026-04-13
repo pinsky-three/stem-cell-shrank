@@ -328,9 +328,13 @@ async fn spawn_and_stream(
     job_id: uuid::Uuid,
     pool: &sqlx::PgPool,
 ) -> Result<(), String> {
+    // Derive a unique port from the job_id to avoid colliding with the parent server
+    let port = 10_000 + (job_id.as_u128() % 50_000) as u16;
+
     let mut child = tokio::process::Command::new(program)
         .args(args)
         .env("MISE_YES", "1")
+        .env("PORT", port.to_string())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
