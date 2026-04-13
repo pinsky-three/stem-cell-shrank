@@ -1,3 +1,4 @@
+import React from "react";
 import { PromptInputBox } from "./ui/ai-prompt-box";
 
 export default function HeroPrompt() {
