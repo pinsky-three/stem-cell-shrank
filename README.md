@@ -1,6 +1,6 @@
 # Stem Cell
 
-A spec-driven platform for building AI app-builders. Define your data model and business workflows in two YAML files and get a Postgres-backed REST API, reverse proxy, container orchestration, and an admin UI — no boilerplate.
+A spec-driven template for building full-stack applications. Define your data model and business workflows in two YAML files and get a Postgres-backed REST API, SQL migrations, and an admin UI — no boilerplate.
 
 Stem Cell compiles two spec files into a full-stack application:
 
@@ -17,21 +17,23 @@ Stem Cell compiles two spec files into a full-stack application:
 - **Contract tests** scaffolded automatically from system error definitions
 - **Admin pages** for each system with trigger forms and result display
 
-Edit a spec, run `mise run codegen`, implement any new stubs, and everything updates.
+Edit a spec, run `mise run dev`, and everything updates.
 
-## What it does today
+## What's included
 
-Stem Cell models an **AI app-builder SaaS platform** (think Lovable/Bolt) with 12 entities across five domains:
+The template ships with a minimal **multi-tenant skeleton** — 3 entities and 1 example system:
 
-| Domain | Entities |
+| Entity | Purpose |
 |---|---|
-| Tenancy & Auth | Organization, User, Membership |
-| Billing | Plan, Subscription, UsageRecord |
-| Core Builder | Project, Conversation, Message |
-| Build Pipeline | BuildJob, Artifact |
-| Deployment | Deployment |
+| Organization | Tenant / workspace |
+| User | Account with email + auth provider |
+| Membership | Links users to orgs with a role |
 
-Business workflows include project creation, message-driven AI build queuing, deployment via hosting providers, subscription upgrades, periodic deployment cleanup, and container-based dev environment spawning with a reverse proxy.
+| System | Mode | Description |
+|---|---|---|
+| InviteMember | declarative | Adds a user to an organization with a given role |
+
+Extend these by editing the two spec files and running codegen.
 
 ## Architecture
 
@@ -46,13 +48,9 @@ stem-cell/
 │   ├── systems-codegen/        # CLI: materializes impl stubs + contract tests
 │   └── runtime/                # binary: Axum server + build.rs (frontend codegen)
 │       ├── build.rs            # reads specs → generates Astro pages → builds frontend
-│       ├── src/main.rs         # connect DB, migrate, serve API + proxy + static files
-│       ├── src/proxy.rs        # reverse proxy for child-environment subdomains
-│       └── src/systems/        # hand-implemented contract systems
-├── frontend/                   # Astro 6 + Tailwind 4 (pages are @generated)
-│   └── src/components/
-│       ├── ProjectView.tsx     # SPA project editor with embedded preview
-│       └── HeroPrompt.tsx      # AI prompt input on landing page
+│       ├── src/main.rs         # connect DB, migrate, serve API + static files
+│       └── src/systems/        # hand-implemented contract systems (empty by default)
+├── frontend/                   # Astro 6 + Tailwind 4 (admin pages are @generated)
 ├── Dockerfile                  # multi-stage: rust:bookworm → debian:bookworm-slim
 └── .mise.toml                  # tool versions + task runner
 ```
@@ -63,29 +61,6 @@ stem-cell/
 2. `build.rs` runs `npm run build` to compile the frontend into `public/`
 3. The proc-macros read the same specs and expand into structs, repos, migrations, API routes, and system executors
 4. At startup, the server applies migrations, mounts the API under `/api/*`, serves OpenAPI docs at `/api/docs`, and serves the static frontend as a fallback
-5. Subdomain requests (e.g. `<slug>.localhost:4200`) are reverse-proxied to the corresponding child environment's port
-
-### Systems
-
-| System | Mode | Description |
-|---|---|---|
-| CreateProject | declarative | Creates a project with its first conversation |
-| SendMessage | declarative | Posts a user message and queues an AI build job |
-| RunBuild | contract | Executes the AI code-generation pipeline |
-| DeployProject | declarative | Deploys a successful build to the hosting provider |
-| UpgradeSubscription | declarative | Changes an org's plan via the payment provider |
-| SpawnEnvironment | contract | Creates a project, queues a build, and spawns a dev container with reverse proxy |
-| CleanupDeployments | contract | Stops stale deployments, kills processes, and cleans up temp files (runs periodically) |
-
-**Declarative** systems are fully generated from step definitions. **Contract** systems generate a trait + DTOs — you implement the body in `crates/runtime/src/systems/`.
-
-### Integrations
-
-| Provider | Operation | Purpose |
-|---|---|---|
-| ai_provider | generate_code | AI code generation from prompts |
-| hosting_provider | deploy_app | Deploy built projects to subdomains |
-| payment_provider | create_subscription | Process plan upgrades |
 
 ## Prerequisites
 
@@ -96,7 +71,7 @@ stem-cell/
 
 ```bash
 # 1. Clone and enter
-git clone <repo-url> stem-cell && cd stem-cell
+git clone <repo-url> my-app && cd my-app
 
 # 2. Install toolchain (Rust + Node, versions locked in .mise.toml)
 mise install
@@ -116,11 +91,9 @@ Then open:
 
 | URL | Description |
 |---|---|
-| `http://localhost:4200` | Landing page with AI prompt input |
+| `http://localhost:4200` | Landing page |
 | `http://localhost:4200/admin` | Admin dashboard (entity CRUD + system triggers) |
 | `http://localhost:4200/api/docs` | Scalar API explorer |
-| `http://localhost:4200/project?id=<uuid>` | Project editor with live preview |
-| `http://<slug>.localhost:4200` | Reverse-proxied child environment |
 
 ## Environment variables
 
@@ -223,34 +196,17 @@ systems:
         check: { field: "org.active", equals: true }
         error: "Org is not active"
       - kind: "create"
-        entity: "Project"
+        entity: "Membership"
         set:
-          - { field: "name", value: "New project" }
-        as: "project"
+          - { field: "role", value: "member" }
+        as: "membership"
     result:
-      - { name: "project", from: "project" }
+      - { name: "membership", from: "membership" }
 ```
 
 Step kinds: `load_one`, `load_many`, `create`, `update`, `delete`, `guard`, `branch`, `call_integration`, `emit_event`.
 
 For complex logic, use `mode: "contract"` — this generates a trait + DTOs that you implement in `crates/runtime/src/systems/<snake_name>.rs`. Run `mise run codegen` to scaffold stubs.
-
-## Project layout
-
-| Path | What it does |
-|---|---|
-| `specs/self.yaml` | Single source of truth for the data model (12 entities). |
-| `specs/systems.yaml` | Business workflows (7 systems) and integration contracts (3 providers). |
-| `crates/resource-model-macro/` | Proc-macro crate (YAML → Rust codegen). Independently publishable. |
-| `crates/system-model-macro/` | Proc-macro crate (systems YAML → traits, DTOs, executors). |
-| `crates/systems-codegen/` | CLI that materializes impl stubs and contract tests from specs. |
-| `crates/runtime/` | The `stem-cell` binary. `build.rs` generates frontend pages; `main.rs` wires the server + proxy. |
-| `crates/runtime/src/systems/` | Hand-implemented contract systems (RunBuild, SpawnEnvironment, CleanupDeployments). |
-| `crates/runtime/src/proxy.rs` | Reverse proxy: routes subdomain requests to child environment ports. |
-| `frontend/` | Astro 6 + Tailwind 4. Pages under `src/pages/admin/` are `@generated` — don't edit them. |
-| `frontend/src/pages/index.astro` | Landing page (hand-authored). |
-| `frontend/src/components/` | React components (ProjectView, HeroPrompt) for interactive UI. |
-| `public/` | Build output from Astro (gitignored). Served as static files. |
 
 ## License
 

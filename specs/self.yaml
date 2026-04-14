@@ -7,14 +7,11 @@ config:
   soft_delete: true
 
 # ────────────────────────────────────────────────────────────────
-# 12 entities — AI app-builder SaaS platform (Lovable clone)
-# Domains: tenancy, billing, builder, build pipeline, deployment.
-# Entity order respects FK dependency graph.
+# 3 entities — general-purpose multi-tenant skeleton
+# Extend this file with your own domain entities.
 # ────────────────────────────────────────────────────────────────
 
 entities:
-
-  # ── Tenancy & Auth ────────────────────────────────────────────
 
   - name: "Organization"
     table: "organizations"
@@ -50,226 +47,13 @@ entities:
         required: true
         references: { entity: "User", field: "id" }
 
-  # ── Billing ───────────────────────────────────────────────────
-
-  - name: "Plan"
-    table: "plans"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "name",          type: "string", required: true }
-      - { name: "slug",          type: "string", required: true, unique: true }
-      - { name: "description",   type: "text",   required: false }
-      - { name: "price_cents",   type: "bigint", required: true }
-      - { name: "currency",      type: "string", required: true }
-      - { name: "build_limit",   type: "int",    required: true }
-      - { name: "project_limit", type: "int",    required: true }
-      - { name: "seat_limit",    type: "int",    required: true }
-      - { name: "active",        type: "bool",   required: true }
-
-  - name: "Subscription"
-    table: "subscriptions"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "status",                   type: "string", required: true }
-      - { name: "provider_subscription_id", type: "string", required: true }
-      - { name: "active",                   type: "bool",   required: true }
-      - name: "org_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Organization", field: "id" }
-      - name: "plan_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Plan", field: "id" }
-
-  # ── Core Builder ──────────────────────────────────────────────
-
-  - name: "Project"
-    table: "projects"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "name",        type: "string", required: true }
-      - { name: "slug",        type: "string", required: true, unique: true }
-      - { name: "description", type: "text",   required: false }
-      - { name: "status",      type: "string", required: true }
-      - { name: "framework",   type: "string", required: false }
-      - { name: "visibility",  type: "string", required: true }
-      - { name: "active",      type: "bool",   required: true }
-      - name: "org_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Organization", field: "id" }
-      - name: "creator_id"
-        type: "uuid"
-        required: true
-        references: { entity: "User", field: "id" }
-
-  - name: "Conversation"
-    table: "conversations"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "title",  type: "string", required: true }
-      - { name: "active", type: "bool",   required: true }
-      - name: "project_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Project", field: "id" }
-
-  - name: "Message"
-    table: "messages"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "role",           type: "string", required: true }
-      - { name: "content",        type: "text",   required: true }
-      - { name: "sort_order",     type: "int",    required: true }
-      - { name: "has_attachment", type: "bool",   required: true }
-      - name: "conversation_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Conversation", field: "id" }
-      - name: "author_id"
-        type: "uuid"
-        required: true
-        references: { entity: "User", field: "id" }
-
-  # ── Build Pipeline ────────────────────────────────────────────
-
-  - name: "BuildJob"
-    table: "build_jobs"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "status",         type: "string", required: true }
-      - { name: "prompt_summary", type: "string", required: true }
-      - { name: "model",          type: "string", required: true }
-      - { name: "tokens_used",    type: "bigint", required: true }
-      - { name: "error_message",  type: "string", required: true }
-      - { name: "duration_ms",    type: "bigint", required: true }
-      - { name: "logs",           type: "text",   required: true }
-      - { name: "deployment_id", type: "uuid", required: false }
-      - name: "project_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Project", field: "id" }
-      - name: "message_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Message", field: "id" }
-
-  - name: "Artifact"
-    table: "artifacts"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "file_path",     type: "string", required: true }
-      - { name: "content_hash",  type: "string", required: true }
-      - { name: "size_bytes",    type: "bigint", required: true }
-      - { name: "language",      type: "string", required: false }
-      - name: "build_job_id"
-        type: "uuid"
-        required: true
-        references: { entity: "BuildJob", field: "id" }
-      - name: "project_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Project", field: "id" }
-
-  # ── Deployment & Usage ────────────────────────────────────────
-
-  - name: "Deployment"
-    table: "deployments"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "status",    type: "string", required: true }
-      - { name: "url",       type: "string", required: true }
-      - { name: "subdomain", type: "string", required: true, unique: true }
-      - { name: "provider",  type: "string", required: true }
-      - { name: "port",      type: "int",    required: true }
-      - { name: "pid",       type: "int",    required: false }
-      - { name: "active",    type: "bool",   required: true }
-      - name: "project_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Project", field: "id" }
-      - name: "build_job_id"
-        type: "uuid"
-        required: true
-        references: { entity: "BuildJob", field: "id" }
-
-  - name: "UsageRecord"
-    table: "usage_records"
-    id: { name: "id", type: "uuid" }
-    fields:
-      - { name: "kind",        type: "string", required: true }
-      - { name: "quantity",    type: "bigint", required: true }
-      - { name: "description", type: "string", required: false }
-      - name: "org_id"
-        type: "uuid"
-        required: true
-        references: { entity: "Organization", field: "id" }
-      - name: "project_id"
-        type: "uuid"
-        required: false
-        references: { entity: "Project", field: "id" }
-
 # ────────────────────────────────────────────────────────────────
 # Relations
 # ────────────────────────────────────────────────────────────────
 
 relations:
 
-  # ── Organization (hub) ────────────────────────────────────────
-  - { name: "memberships",    kind: "has_many", source: "Organization", target: "Membership",  foreign_key: "org_id" }
-  - { name: "projects",       kind: "has_many", source: "Organization", target: "Project",     foreign_key: "org_id" }
-  - { name: "subscriptions",  kind: "has_many", source: "Organization", target: "Subscription", foreign_key: "org_id" }
-  - { name: "usage_records",  kind: "has_many", source: "Organization", target: "UsageRecord", foreign_key: "org_id" }
-
-  # ── User ──────────────────────────────────────────────────────
-  - { name: "memberships",       kind: "has_many", source: "User", target: "Membership", foreign_key: "user_id" }
-  - { name: "created_projects",  kind: "has_many", source: "User", target: "Project",    foreign_key: "creator_id" }
-  - { name: "messages",          kind: "has_many", source: "User", target: "Message",    foreign_key: "author_id" }
-
-  # ── Membership ────────────────────────────────────────────────
-  - { name: "org",  kind: "belongs_to", source: "Membership", target: "Organization", foreign_key: "org_id" }
-  - { name: "user", kind: "belongs_to", source: "Membership", target: "User",         foreign_key: "user_id" }
-
-  # ── Plan ──────────────────────────────────────────────────────
-  - { name: "subscriptions", kind: "has_many", source: "Plan", target: "Subscription", foreign_key: "plan_id" }
-
-  # ── Subscription ──────────────────────────────────────────────
-  - { name: "org",  kind: "belongs_to", source: "Subscription", target: "Organization", foreign_key: "org_id" }
-  - { name: "plan", kind: "belongs_to", source: "Subscription", target: "Plan",         foreign_key: "plan_id" }
-
-  # ── Project ───────────────────────────────────────────────────
-  - { name: "org",           kind: "belongs_to", source: "Project", target: "Organization", foreign_key: "org_id" }
-  - { name: "creator",      kind: "belongs_to", source: "Project", target: "User",         foreign_key: "creator_id" }
-  - { name: "conversations", kind: "has_many",  source: "Project", target: "Conversation", foreign_key: "project_id" }
-  - { name: "build_jobs",   kind: "has_many",   source: "Project", target: "BuildJob",     foreign_key: "project_id" }
-  - { name: "artifacts",    kind: "has_many",   source: "Project", target: "Artifact",     foreign_key: "project_id" }
-  - { name: "deployments",  kind: "has_many",   source: "Project", target: "Deployment",   foreign_key: "project_id" }
-  - { name: "usage_records", kind: "has_many",  source: "Project", target: "UsageRecord",  foreign_key: "project_id" }
-
-  # ── Conversation ──────────────────────────────────────────────
-  - { name: "project",  kind: "belongs_to", source: "Conversation", target: "Project", foreign_key: "project_id" }
-  - { name: "messages", kind: "has_many",   source: "Conversation", target: "Message",  foreign_key: "conversation_id" }
-
-  # ── Message ───────────────────────────────────────────────────
-  - { name: "conversation", kind: "belongs_to", source: "Message", target: "Conversation", foreign_key: "conversation_id" }
-  - { name: "author",       kind: "belongs_to", source: "Message", target: "User",         foreign_key: "author_id" }
-  - { name: "build_jobs",   kind: "has_many",   source: "Message", target: "BuildJob",     foreign_key: "message_id" }
-
-  # ── BuildJob ──────────────────────────────────────────────────
-  - { name: "project",     kind: "belongs_to", source: "BuildJob", target: "Project",  foreign_key: "project_id" }
-  - { name: "message",     kind: "belongs_to", source: "BuildJob", target: "Message",  foreign_key: "message_id" }
-  - { name: "artifacts",   kind: "has_many",   source: "BuildJob", target: "Artifact", foreign_key: "build_job_id" }
-  - { name: "deployments", kind: "has_many",   source: "BuildJob", target: "Deployment", foreign_key: "build_job_id" }
-
-  # ── Artifact ──────────────────────────────────────────────────
-  - { name: "build_job", kind: "belongs_to", source: "Artifact", target: "BuildJob", foreign_key: "build_job_id" }
-  - { name: "project",   kind: "belongs_to", source: "Artifact", target: "Project",  foreign_key: "project_id" }
-
-  # ── Deployment ────────────────────────────────────────────────
-  - { name: "project",   kind: "belongs_to", source: "Deployment", target: "Project",  foreign_key: "project_id" }
-  - { name: "build_job", kind: "belongs_to", source: "Deployment", target: "BuildJob", foreign_key: "build_job_id" }
-
-  # ── UsageRecord ───────────────────────────────────────────────
-  - { name: "org",     kind: "belongs_to", source: "UsageRecord", target: "Organization", foreign_key: "org_id" }
-  - { name: "project", kind: "belongs_to", source: "UsageRecord", target: "Project",      foreign_key: "project_id" }
+  - { name: "memberships", kind: "has_many",    source: "Organization", target: "Membership", foreign_key: "org_id" }
+  - { name: "memberships", kind: "has_many",    source: "User",         target: "Membership", foreign_key: "user_id" }
+  - { name: "org",         kind: "belongs_to",  source: "Membership",   target: "Organization", foreign_key: "org_id" }
+  - { name: "user",        kind: "belongs_to",  source: "Membership",   target: "User",         foreign_key: "user_id" }

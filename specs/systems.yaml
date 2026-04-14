@@ -1,40 +1,10 @@
 version: 1
 
 # ────────────────────────────────────────────────────────────────
-# Integrations — external provider contracts
+# Integrations — add external provider contracts here
 # ────────────────────────────────────────────────────────────────
 
-integrations:
-
-  - name: "ai_provider"
-    operations:
-      - name: "generate_code"
-        input:
-          - { name: "prompt",  type: "string" }
-          - { name: "context", type: "string" }
-        output:
-          - { name: "generated_files", type: "string" }
-          - { name: "tokens_used",     type: "bigint" }
-
-  - name: "hosting_provider"
-    operations:
-      - name: "deploy_app"
-        input:
-          - { name: "project_ref", type: "string" }
-          - { name: "subdomain",   type: "string" }
-        output:
-          - { name: "url",    type: "string" }
-          - { name: "status", type: "string" }
-
-  - name: "payment_provider"
-    operations:
-      - name: "create_subscription"
-        input:
-          - { name: "plan_ref", type: "string" }
-          - { name: "token",    type: "string" }
-        output:
-          - { name: "subscription_id", type: "string" }
-          - { name: "status",          type: "string" }
+integrations: []
 
 # ────────────────────────────────────────────────────────────────
 # Systems — declarative & contract business workflows
@@ -42,15 +12,14 @@ integrations:
 
 systems:
 
-  # ── 1. Create a new project with an initial conversation ──────
-  - name: "CreateProject"
-    description: "Creates a new AI-builder project and its first conversation"
+  # Example declarative system — demonstrates guards, loads, creates, and events.
+  # Replace or extend with your own workflows.
+  - name: "InviteMember"
+    description: "Adds a user to an organization with a given role"
     input:
-      - { name: "org_id",      type: "uuid",   required: true }
-      - { name: "creator_id",  type: "uuid",   required: true }
-      - { name: "name",        type: "string", required: true }
-      - { name: "description", type: "string", required: false }
-      - { name: "framework",   type: "string", required: false }
+      - { name: "org_id",  type: "uuid",   required: true }
+      - { name: "user_id", type: "uuid",   required: true }
+      - { name: "role",    type: "string", required: true }
     steps:
       - kind: "load_one"
         entity: "Organization"
@@ -64,277 +33,29 @@ systems:
 
       - kind: "load_one"
         entity: "User"
-        by: "input.creator_id"
-        as: "creator"
-        not_found: "Creator user not found"
+        by: "input.user_id"
+        as: "user"
+        not_found: "User not found"
 
       - kind: "guard"
-        check: { field: "creator.active", equals: true }
-        error: "Creator user is not active"
+        check: { field: "user.active", equals: true }
+        error: "User is not active"
 
       - kind: "create"
-        entity: "Project"
+        entity: "Membership"
         set:
-          - { field: "name",        from: "input.name" }
-          - { field: "slug",        from: "input.name" }
-          - { field: "description", from: "input.description" }
-          - { field: "status",      value: "active" }
-          - { field: "framework",   from: "input.framework" }
-          - { field: "visibility",  value: "private" }
-          - { field: "active",      value: true }
-          - { field: "org_id",      from: "input.org_id" }
-          - { field: "creator_id",  from: "input.creator_id" }
-        as: "project"
-
-      - kind: "create"
-        entity: "Conversation"
-        set:
-          - { field: "title",      value: "Initial conversation" }
-          - { field: "active",     value: true }
-          - { field: "project_id", from: "project.id" }
-        as: "conversation"
+          - { field: "role",    from: "input.role" }
+          - { field: "active",  value: true }
+          - { field: "org_id",  from: "input.org_id" }
+          - { field: "user_id", from: "input.user_id" }
+        as: "membership"
 
       - kind: "emit_event"
-        event: "project_created"
+        event: "member_invited"
         payload:
-          - { field: "project_id",      from: "project.id" }
-          - { field: "org_id",          from: "org.id" }
-          - { field: "conversation_id", from: "conversation.id" }
+          - { field: "membership_id", from: "membership.id" }
+          - { field: "org_id",        from: "org.id" }
+          - { field: "user_id",       from: "user.id" }
 
     result:
-      - { name: "project",      from: "project" }
-      - { name: "conversation", from: "conversation" }
-
-  # ── 2. Send a message and queue a build ────────────────────────
-  - name: "SendMessage"
-    description: "Posts a user message to a conversation and queues an AI build job"
-    input:
-      - { name: "conversation_id", type: "uuid",   required: true }
-      - { name: "author_id",       type: "uuid",   required: true }
-      - { name: "content",         type: "string", required: true }
-      - { name: "model",           type: "string", required: true }
-    steps:
-      - kind: "load_one"
-        entity: "Conversation"
-        by: "input.conversation_id"
-        as: "conversation"
-        not_found: "Conversation not found"
-
-      - kind: "guard"
-        check: { field: "conversation.active", equals: true }
-        error: "Conversation is closed"
-
-      - kind: "load_one"
-        entity: "Project"
-        by: "conversation.project_id"
-        as: "project"
-        not_found: "Project not found"
-
-      - kind: "guard"
-        check: { field: "project.active", equals: true }
-        error: "Project is not active"
-
-      - kind: "create"
-        entity: "Message"
-        set:
-          - { field: "role",            value: "user" }
-          - { field: "content",         from: "input.content" }
-          - { field: "sort_order",      value: 0 }
-          - { field: "has_attachment",  value: false }
-          - { field: "conversation_id", from: "input.conversation_id" }
-          - { field: "author_id",       from: "input.author_id" }
-        as: "message"
-
-      - kind: "create"
-        entity: "BuildJob"
-        set:
-          - { field: "status",         value: "queued" }
-          - { field: "prompt_summary", from: "input.content" }
-          - { field: "model",          from: "input.model" }
-          - { field: "tokens_used",    value: 0 }
-          - { field: "error_message",  value: "" }
-          - { field: "duration_ms",    value: 0 }
-          - { field: "logs",           value: "" }
-          - { field: "deployment_id",  value: null }
-          - { field: "project_id",     from: "project.id" }
-          - { field: "message_id",     from: "message.id" }
-        as: "build_job"
-
-      - kind: "emit_event"
-        event: "message_sent"
-        payload:
-          - { field: "message_id",      from: "message.id" }
-          - { field: "build_job_id",    from: "build_job.id" }
-          - { field: "project_id",      from: "project.id" }
-          - { field: "conversation_id", from: "conversation.id" }
-
-    result:
-      - { name: "message",   from: "message" }
-      - { name: "build_job", from: "build_job" }
-
-  # ── 3. Run a build (contract mode — impl provided by user) ────
-  - name: "RunBuild"
-    mode: "contract"
-    description: "Executes the AI code-generation pipeline: fetches project context, calls the AI provider, and writes artifacts"
-    input:
-      - { name: "build_job_id", type: "uuid",   required: true }
-    output:
-      - { name: "artifacts_count", type: "int" }
-      - { name: "tokens_used",    type: "bigint" }
-      - { name: "status",         type: "string" }
-    errors:
-      - "BuildJobNotFound"
-      - "ProjectNotFound"
-      - "AiProviderError(String)"
-      - "BuildFailed(String)"
-
-  # ── 4. Deploy a project ────────────────────────────────────────
-  - name: "DeployProject"
-    description: "Deploys the latest successful build of a project to the hosting provider"
-    input:
-      - { name: "project_id",    type: "uuid",   required: true }
-      - { name: "build_job_id",  type: "uuid",   required: true }
-      - { name: "subdomain",     type: "string", required: true }
-      - { name: "provider",      type: "string", required: true }
-    steps:
-      - kind: "load_one"
-        entity: "Project"
-        by: "input.project_id"
-        as: "project"
-        not_found: "Project not found"
-
-      - kind: "guard"
-        check: { field: "project.active", equals: true }
-        error: "Project is not active"
-
-      - kind: "load_one"
-        entity: "BuildJob"
-        by: "input.build_job_id"
-        as: "build_job"
-        not_found: "Build job not found"
-
-      - kind: "guard"
-        check: { field: "build_job.status", equals: "succeeded" }
-        error: "Can only deploy a successful build"
-
-      - kind: "call_integration"
-        integration: "hosting_provider"
-        operation: "deploy_app"
-        input:
-          - { param: "project_ref", from: "project.slug" }
-          - { param: "subdomain",   from: "input.subdomain" }
-        as: "deploy_result"
-
-      - kind: "create"
-        entity: "Deployment"
-        set:
-          - { field: "status",       value: "live" }
-          - { field: "url",          from: "deploy_result.url" }
-          - { field: "subdomain",    from: "input.subdomain" }
-          - { field: "provider",     from: "input.provider" }
-          - { field: "port",         value: 0 }
-          - { field: "pid",          value: null }
-          - { field: "active",       value: true }
-          - { field: "project_id",   from: "input.project_id" }
-          - { field: "build_job_id", from: "input.build_job_id" }
-        as: "deployment"
-
-      - kind: "emit_event"
-        event: "project_deployed"
-        payload:
-          - { field: "deployment_id", from: "deployment.id" }
-          - { field: "project_id",    from: "project.id" }
-          - { field: "url",           from: "deploy_result.url" }
-
-    result:
-      - { name: "deployment", from: "deployment" }
-
-  # ── 5. Upgrade an organization's subscription ──────────────────
-  - name: "UpgradeSubscription"
-    description: "Changes an organization's plan and processes payment via the payment provider"
-    input:
-      - { name: "org_id",                type: "uuid",   required: true }
-      - { name: "plan_id",               type: "uuid",   required: true }
-      - { name: "payment_method_token",  type: "string", required: true }
-    steps:
-      - kind: "load_one"
-        entity: "Organization"
-        by: "input.org_id"
-        as: "org"
-        not_found: "Organization not found"
-
-      - kind: "guard"
-        check: { field: "org.active", equals: true }
-        error: "Organization is not active"
-
-      - kind: "load_one"
-        entity: "Plan"
-        by: "input.plan_id"
-        as: "plan"
-        not_found: "Plan not found"
-
-      - kind: "guard"
-        check: { field: "plan.active", equals: true }
-        error: "Selected plan is not available"
-
-      - kind: "call_integration"
-        integration: "payment_provider"
-        operation: "create_subscription"
-        input:
-          - { param: "plan_ref", from: "plan.slug" }
-          - { param: "token",    from: "input.payment_method_token" }
-        as: "payment_result"
-
-      - kind: "create"
-        entity: "Subscription"
-        set:
-          - { field: "status",                   value: "active" }
-          - { field: "provider_subscription_id", from: "payment_result.subscription_id" }
-          - { field: "active",                   value: true }
-          - { field: "org_id",                   from: "input.org_id" }
-          - { field: "plan_id",                  from: "input.plan_id" }
-        as: "subscription"
-
-      - kind: "emit_event"
-        event: "subscription_upgraded"
-        payload:
-          - { field: "subscription_id", from: "subscription.id" }
-          - { field: "org_id",          from: "org.id" }
-          - { field: "plan_id",         from: "plan.id" }
-
-    result:
-      - { name: "subscription", from: "subscription" }
-
-  # ── 6. Cleanup stale deployments ──────────────────────────────
-  - name: "CleanupDeployments"
-    mode: "contract"
-    description: "Stops running deployments older than max_age_minutes, kills their process, and removes the cloned repo from temp"
-    input:
-      - { name: "max_age_minutes", type: "int",  required: false }
-      - { name: "deployment_id",   type: "uuid", required: false }
-    output:
-      - { name: "cleaned_count", type: "int" }
-      - { name: "errors",       type: "string" }
-      - { name: "status",       type: "string" }
-    errors:
-      - "DeploymentNotFound"
-      - "CleanupFailed(String)"
-      - "DatabaseError(String)"
-
-  # ── 7. Spawn a dev environment in a container ─────────────────
-  - name: "SpawnEnvironment"
-    mode: "contract"
-    description: "Creates a project, queues a build job, and spawns a Podman container to clone a repo and run mise run dev"
-    input:
-      - { name: "org_id",   type: "uuid",   required: true }
-      - { name: "user_id",  type: "uuid",   required: true }
-      - { name: "prompt",   type: "string", required: true }
-    output:
-      - { name: "project_id", type: "string" }
-      - { name: "job_id",     type: "string" }
-      - { name: "status",     type: "string" }
-    errors:
-      - "OrgNotFound"
-      - "UserNotFound"
-      - "SpawnFailed(String)"
-      - "DatabaseError(String)"
+      - { name: "membership", from: "membership" }

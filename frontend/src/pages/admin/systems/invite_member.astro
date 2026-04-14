@@ -2,22 +2,33 @@
 ---
 import Base from "../../../layouts/Base.astro";
 ---
-<Base title="RunBuild | Systems" noindex={true}>
+<Base title="InviteMember | Systems" noindex={true}>
   <div class="mx-auto max-w-3xl px-6 py-12">
     <div class="flex items-center gap-4">
       <a href="/admin" class="text-neutral-500 transition hover:text-neutral-300">&larr; Dashboard</a>
-      <h1 class="text-3xl font-bold tracking-tight">RunBuild</h1>
+      <h1 class="text-3xl font-bold tracking-tight">InviteMember</h1>
     </div>
-    <p class="mt-2 text-sm text-neutral-400">Executes the AI code-generation pipeline: fetches project context, calls the AI provider, and writes artifacts</p>
-    <p class="mt-1 text-xs text-neutral-600">POST /api/systems/run_build</p>
+    <p class="mt-2 text-sm text-neutral-400">Adds a user to an organization with a given role</p>
+    <p class="mt-1 text-xs text-neutral-600">POST /api/systems/invite_member</p>
 
     <form id="system-form" class="mt-8 flex flex-col gap-4">
       <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 flex flex-col gap-4">
         <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-500">Input</h2>
         <div class="flex flex-col gap-1">
-              <label class="text-xs font-medium text-neutral-400">build job id</label>
-              <input type="text" name="build_job_id" placeholder="build_job_id (UUID)"
+              <label class="text-xs font-medium text-neutral-400">org id</label>
+              <input type="text" name="org_id" placeholder="org_id (UUID)"
                 pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" required />
+            </div>
+        <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-neutral-400">user id</label>
+              <input type="text" name="user_id" placeholder="user_id (UUID)"
+                pattern="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" required />
+            </div>
+        <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-neutral-400">role</label>
+              <input type="text" name="role" placeholder="role"
                 class="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500" required />
             </div>
       </div>
@@ -29,7 +40,7 @@ import Base from "../../../layouts/Base.astro";
 
     <div id="result-panel" class="mt-6 hidden">
       <h2 class="text-sm font-semibold uppercase tracking-wider text-neutral-500 mb-2">Result</h2>
-      <p class="text-xs text-neutral-600 mb-2">No result fields</p>
+      <p class="text-xs text-neutral-600 mb-2">membership (from membership)</p>
       <pre id="result-body"
         class="overflow-auto rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 text-xs text-neutral-300 max-h-96"></pre>
     </div>
@@ -57,11 +68,13 @@ import Base from "../../../layouts/Base.astro";
       errorPanel.classList.add('hidden');
 
       const body = {
-          build_job_id: form.elements['build_job_id'].value
+          org_id: form.elements['org_id'].value,
+          user_id: form.elements['user_id'].value,
+          role: form.elements['role'].value
       };
 
       try {
-        const res = await fetch('/api/systems/run_build', {
+        const res = await fetch('/api/systems/invite_member', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),

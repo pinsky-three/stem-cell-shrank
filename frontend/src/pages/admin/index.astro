@@ -28,90 +28,15 @@ import Base from "../../layouts/Base.astro";
         <p id="count-memberships" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
         <p class="mt-1 text-xs text-neutral-500">/admin/memberships</p>
       </a>
-      <a href="/admin/plans" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">Plan</h3>
-        <p id="count-plans" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
-        <p class="mt-1 text-xs text-neutral-500">/admin/plans</p>
-      </a>
-      <a href="/admin/subscriptions" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">Subscription</h3>
-        <p id="count-subscriptions" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
-        <p class="mt-1 text-xs text-neutral-500">/admin/subscriptions</p>
-      </a>
-      <a href="/admin/projects" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">Project</h3>
-        <p id="count-projects" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
-        <p class="mt-1 text-xs text-neutral-500">/admin/projects</p>
-      </a>
-      <a href="/admin/conversations" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">Conversation</h3>
-        <p id="count-conversations" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
-        <p class="mt-1 text-xs text-neutral-500">/admin/conversations</p>
-      </a>
-      <a href="/admin/messages" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">Message</h3>
-        <p id="count-messages" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
-        <p class="mt-1 text-xs text-neutral-500">/admin/messages</p>
-      </a>
-      <a href="/admin/build_jobs" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">BuildJob</h3>
-        <p id="count-build_jobs" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
-        <p class="mt-1 text-xs text-neutral-500">/admin/build_jobs</p>
-      </a>
-      <a href="/admin/artifacts" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">Artifact</h3>
-        <p id="count-artifacts" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
-        <p class="mt-1 text-xs text-neutral-500">/admin/artifacts</p>
-      </a>
-      <a href="/admin/deployments" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">Deployment</h3>
-        <p id="count-deployments" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
-        <p class="mt-1 text-xs text-neutral-500">/admin/deployments</p>
-      </a>
-      <a href="/admin/usage_records" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">UsageRecord</h3>
-        <p id="count-usage_records" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
-        <p class="mt-1 text-xs text-neutral-500">/admin/usage_records</p>
-      </a>
     </div>
 
     <h2 class="mt-14 text-xl font-bold tracking-tight text-neutral-300">Systems</h2>
     <p class="mt-1 text-sm text-neutral-500">Declarative business workflows generated from systems.yaml</p>
     <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      <a href="/admin/systems/create_project" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">CreateProject</h3>
-        <p class="mt-2 text-sm text-neutral-400">Creates a new AI-builder project and its first conversation</p>
-        <p class="mt-2 text-xs text-neutral-500">5 inputs &middot; POST /api/systems/create_project</p>
-      </a>
-      <a href="/admin/systems/send_message" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">SendMessage</h3>
-        <p class="mt-2 text-sm text-neutral-400">Posts a user message to a conversation and queues an AI build job</p>
-        <p class="mt-2 text-xs text-neutral-500">4 inputs &middot; POST /api/systems/send_message</p>
-      </a>
-      <a href="/admin/systems/run_build" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">RunBuild</h3>
-        <p class="mt-2 text-sm text-neutral-400">Executes the AI code-generation pipeline: fetches project context, calls the AI provider, and writes artifacts</p>
-        <p class="mt-2 text-xs text-neutral-500">1 inputs &middot; POST /api/systems/run_build</p>
-      </a>
-      <a href="/admin/systems/deploy_project" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">DeployProject</h3>
-        <p class="mt-2 text-sm text-neutral-400">Deploys the latest successful build of a project to the hosting provider</p>
-        <p class="mt-2 text-xs text-neutral-500">4 inputs &middot; POST /api/systems/deploy_project</p>
-      </a>
-      <a href="/admin/systems/upgrade_subscription" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">UpgradeSubscription</h3>
-        <p class="mt-2 text-sm text-neutral-400">Changes an organization's plan and processes payment via the payment provider</p>
-        <p class="mt-2 text-xs text-neutral-500">3 inputs &middot; POST /api/systems/upgrade_subscription</p>
-      </a>
-      <a href="/admin/systems/cleanup_deployments" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">CleanupDeployments</h3>
-        <p class="mt-2 text-sm text-neutral-400">Stops running deployments older than max_age_minutes, kills their process, and removes the cloned repo from temp</p>
-        <p class="mt-2 text-xs text-neutral-500">2 inputs &middot; POST /api/systems/cleanup_deployments</p>
-      </a>
-      <a href="/admin/systems/spawn_environment" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
-        <h3 class="text-lg font-semibold">SpawnEnvironment</h3>
-        <p class="mt-2 text-sm text-neutral-400">Creates a project, queues a build job, and spawns a Podman container to clone a repo and run mise run dev</p>
-        <p class="mt-2 text-xs text-neutral-500">3 inputs &middot; POST /api/systems/spawn_environment</p>
+      <a href="/admin/systems/invite_member" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">InviteMember</h3>
+        <p class="mt-2 text-sm text-neutral-400">Adds a user to an organization with a given role</p>
+        <p class="mt-2 text-xs text-neutral-500">3 inputs &middot; POST /api/systems/invite_member</p>
       </a>
     </div>
   </div>
@@ -131,51 +56,6 @@ import Base from "../../layouts/Base.astro";
       document.getElementById('count-memberships').textContent=d.length+' records';
     }).catch(()=>{
       document.getElementById('count-memberships').textContent='--';
-    });
-    fetch('/api/plans').then(r=>r.json()).then(d=>{
-      document.getElementById('count-plans').textContent=d.length+' records';
-    }).catch(()=>{
-      document.getElementById('count-plans').textContent='--';
-    });
-    fetch('/api/subscriptions').then(r=>r.json()).then(d=>{
-      document.getElementById('count-subscriptions').textContent=d.length+' records';
-    }).catch(()=>{
-      document.getElementById('count-subscriptions').textContent='--';
-    });
-    fetch('/api/projects').then(r=>r.json()).then(d=>{
-      document.getElementById('count-projects').textContent=d.length+' records';
-    }).catch(()=>{
-      document.getElementById('count-projects').textContent='--';
-    });
-    fetch('/api/conversations').then(r=>r.json()).then(d=>{
-      document.getElementById('count-conversations').textContent=d.length+' records';
-    }).catch(()=>{
-      document.getElementById('count-conversations').textContent='--';
-    });
-    fetch('/api/messages').then(r=>r.json()).then(d=>{
-      document.getElementById('count-messages').textContent=d.length+' records';
-    }).catch(()=>{
-      document.getElementById('count-messages').textContent='--';
-    });
-    fetch('/api/build_jobs').then(r=>r.json()).then(d=>{
-      document.getElementById('count-build_jobs').textContent=d.length+' records';
-    }).catch(()=>{
-      document.getElementById('count-build_jobs').textContent='--';
-    });
-    fetch('/api/artifacts').then(r=>r.json()).then(d=>{
-      document.getElementById('count-artifacts').textContent=d.length+' records';
-    }).catch(()=>{
-      document.getElementById('count-artifacts').textContent='--';
-    });
-    fetch('/api/deployments').then(r=>r.json()).then(d=>{
-      document.getElementById('count-deployments').textContent=d.length+' records';
-    }).catch(()=>{
-      document.getElementById('count-deployments').textContent='--';
-    });
-    fetch('/api/usage_records').then(r=>r.json()).then(d=>{
-      document.getElementById('count-usage_records').textContent=d.length+' records';
-    }).catch(()=>{
-      document.getElementById('count-usage_records').textContent='--';
     });
   </script>
 </Base>

@@ -1,7 +1,1 @@
-// @generated-stub
-mod run_build;
-mod cleanup_deployments;
-mod spawn_environment;
-mod ai_provider_integration;
-mod hosting_provider_integration;
-mod payment_provider_integration;
+// No contract systems — add contract test modules here when you add contract-mode systems.
