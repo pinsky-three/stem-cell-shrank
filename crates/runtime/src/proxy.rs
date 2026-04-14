@@ -2,7 +2,7 @@ use axum::{
     Router,
     body::Body,
     extract::{Path, Request, State},
-    http::{HeaderMap, HeaderValue, StatusCode},
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::any,
 };
@@ -99,12 +99,6 @@ async fn do_proxy(
 
     let status = StatusCode::from_u16(upstream.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
     let resp_headers = upstream.headers().clone();
-    let is_html = resp_headers
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .map(|ct| ct.contains("text/html"))
-        .unwrap_or(false);
-
     let body_bytes = match upstream.bytes().await {
         Ok(b) => b,
         Err(e) => {
@@ -112,11 +106,11 @@ async fn do_proxy(
         }
     };
 
-    let final_body = if is_html {
-        inject_base_tag(&body_bytes, deployment_id)
-    } else {
-        body_bytes.to_vec()
-    };
+    let ct_str = resp_headers
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    let final_body = rewrite_response_body(&body_bytes, deployment_id, ct_str);
 
     let mut response = Response::builder().status(status);
     for (key, value) in resp_headers.iter() {
@@ -132,29 +126,78 @@ async fn do_proxy(
         .unwrap_or_else(|_| (StatusCode::INTERNAL_SERVER_ERROR, "response build failed").into_response())
 }
 
-/// Inject `<base href="...">` right after `<head>` so relative paths resolve
-/// through the proxy prefix.
-fn inject_base_tag(html_bytes: &[u8], deployment_id: uuid::Uuid) -> Vec<u8> {
-    let html = String::from_utf8_lossy(html_bytes);
-    let base_tag = format!(r#"<base href="/env/{deployment_id}/">"#);
+/// Rewrite absolute paths in proxied responses so `/_astro/...`, `/favicon.png`,
+/// etc. route back through `/env/{id}/…` instead of hitting the parent server.
+fn rewrite_response_body(body: &[u8], deployment_id: uuid::Uuid, content_type: &str) -> Vec<u8> {
+    let text = match std::str::from_utf8(body) {
+        Ok(t) => t,
+        Err(_) => return body.to_vec(),
+    };
+    let prefix = format!("/env/{deployment_id}");
 
-    if let Some(pos) = html.find("<head>") {
-        let insert_at = pos + "<head>".len();
-        let mut result = String::with_capacity(html.len() + base_tag.len());
-        result.push_str(&html[..insert_at]);
-        result.push_str(&base_tag);
-        result.push_str(&html[insert_at..]);
-        result.into_bytes()
-    } else if let Some(pos) = html.find("<HEAD>") {
-        let insert_at = pos + "<HEAD>".len();
-        let mut result = String::with_capacity(html.len() + base_tag.len());
-        result.push_str(&html[..insert_at]);
-        result.push_str(&base_tag);
-        result.push_str(&html[insert_at..]);
-        result.into_bytes()
+    if content_type.contains("text/html") {
+        let rewritten = rewrite_html_attrs(text, &prefix);
+        let rewritten = rewrite_asset_refs(&rewritten, &prefix);
+        rewritten.into_bytes()
+    } else if content_type.contains("javascript") || content_type.contains("text/css") {
+        rewrite_asset_refs(text, &prefix).into_bytes()
     } else {
-        html_bytes.to_vec()
+        body.to_vec()
     }
+}
+
+/// Rewrite `="/<path>"` and `='/<path>'` in HTML attributes to go through the
+/// proxy prefix. Protocol-relative URLs (`="//..."`) are left untouched.
+fn rewrite_html_attrs(html: &str, prefix: &str) -> String {
+    let mut result = String::with_capacity(html.len() + 512);
+    let mut remaining = html;
+
+    loop {
+        let dq = remaining.find("=\"/");
+        let sq = remaining.find("='/");
+
+        let pos = match (dq, sq) {
+            (Some(d), Some(s)) => d.min(s),
+            (Some(d), None) => d,
+            (None, Some(s)) => s,
+            (None, None) => break,
+        };
+
+        let quote_char_len = 2; // =" or ='
+        let slash_pos = pos + quote_char_len; // index of the '/'
+        let after_slash = slash_pos + 1;
+
+        // Skip protocol-relative URLs: ="//..."
+        if remaining.as_bytes().get(after_slash) == Some(&b'/') {
+            result.push_str(&remaining[..after_slash]);
+            remaining = &remaining[after_slash..];
+            continue;
+        }
+
+        // Skip if already rewritten (starts with our prefix)
+        if remaining[slash_pos..].starts_with(&format!("{prefix}/")) {
+            result.push_str(&remaining[..after_slash]);
+            remaining = &remaining[after_slash..];
+            continue;
+        }
+
+        // Rewrite: ="/<path>" → ="<prefix>/<path>"
+        result.push_str(&remaining[..slash_pos]); // up to and including ="
+        result.push_str(prefix);
+        result.push('/');
+        remaining = &remaining[after_slash..]; // skip past the original /
+    }
+
+    result.push_str(remaining);
+    result
+}
+
+/// Rewrite `/_astro/` references in JS, CSS, and inline `<script>` blocks.
+fn rewrite_asset_refs(text: &str, prefix: &str) -> String {
+    text.replace("\"/_astro/", &format!("\"{prefix}/_astro/"))
+        .replace("'/_astro/", &format!("'{prefix}/_astro/"))
+        .replace("`/_astro/", &format!("`{prefix}/_astro/"))
+        .replace("(/_astro/", &format!("({prefix}/_astro/")) // url() in CSS
 }
 
 fn reqwest_headers(headers: &HeaderMap) -> reqwest::header::HeaderMap {
