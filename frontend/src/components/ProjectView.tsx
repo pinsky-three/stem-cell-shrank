@@ -148,6 +148,112 @@ function ChatPanel({
   );
 }
 
+// ── URL bar ─────────────────────────────────────────────────────────────
+
+function UrlBar({
+  url,
+  onNavigate,
+  onRefresh,
+  onBack,
+  onForward,
+  canGoBack,
+  canGoForward,
+}: {
+  url: string;
+  onNavigate: (url: string) => void;
+  onRefresh: () => void;
+  onBack: () => void;
+  onForward: () => void;
+  canGoBack: boolean;
+  canGoForward: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(url);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!editing) setDraft(url);
+  }, [url, editing]);
+
+  const commit = () => {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== url) onNavigate(trimmed);
+  };
+
+  const navBtnClass = (enabled: boolean) =>
+    `flex h-7 w-7 items-center justify-center rounded-md transition ${
+      enabled
+        ? "text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+        : "text-neutral-700 cursor-default"
+    }`;
+
+  return (
+    <div className="flex items-center gap-1.5 border-b border-neutral-800 bg-neutral-950/80 px-2 py-1.5">
+      <button
+        onClick={onBack}
+        disabled={!canGoBack}
+        className={navBtnClass(canGoBack)}
+        title="Back"
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5"/></svg>
+      </button>
+      <button
+        onClick={onForward}
+        disabled={!canGoForward}
+        className={navBtnClass(canGoForward)}
+        title="Forward"
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3l5 5-5 5"/></svg>
+      </button>
+      <button
+        onClick={onRefresh}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition"
+        title="Refresh"
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 1.5v4h4"/><path d="M2.3 9.5a6 6 0 1 0 .8-4L1.5 5.5"/></svg>
+      </button>
+
+      <div className="relative flex flex-1 items-center">
+        <div className="pointer-events-none absolute left-2.5 text-neutral-600">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v0M8 7v4"/></svg>
+        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          value={editing ? draft : url}
+          onChange={(e) => setDraft(e.target.value)}
+          onFocus={() => {
+            setEditing(true);
+            setTimeout(() => inputRef.current?.select(), 0);
+          }}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") {
+              setDraft(url);
+              setEditing(false);
+              inputRef.current?.blur();
+            }
+          }}
+          className="h-7 w-full rounded-md border border-neutral-800 bg-neutral-900 pl-8 pr-2 text-xs text-neutral-300 outline-none transition focus:border-neutral-600 focus:bg-neutral-900/80 placeholder:text-neutral-700"
+          spellCheck={false}
+        />
+      </div>
+
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition"
+        title="Open in new tab"
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2h5v5"/><path d="M14 2L7 9"/><path d="M13 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4"/></svg>
+      </a>
+    </div>
+  );
+}
+
 // ── Preview panel ───────────────────────────────────────────────────────
 
 function PreviewPanel({
@@ -157,25 +263,90 @@ function PreviewPanel({
   deploymentId: string | null;
   status: string | null;
 }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [currentUrl, setCurrentUrl] = useState("");
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIdx, setHistoryIdx] = useState(-1);
+
+  const baseUrl = deploymentId ? `/env/${deploymentId}/` : "";
+
+  // Initialise when deployment becomes available
+  useEffect(() => {
+    if (baseUrl) {
+      setCurrentUrl(baseUrl);
+      setHistory([baseUrl]);
+      setHistoryIdx(0);
+    }
+  }, [baseUrl]);
+
+  const navigateTo = useCallback(
+    (url: string) => {
+      const next = history.slice(0, historyIdx + 1);
+      next.push(url);
+      setHistory(next);
+      setHistoryIdx(next.length - 1);
+      setCurrentUrl(url);
+      if (iframeRef.current) iframeRef.current.src = url;
+    },
+    [history, historyIdx],
+  );
+
+  const handleRefresh = useCallback(() => {
+    if (iframeRef.current) {
+      iframeRef.current.src = currentUrl;
+    }
+  }, [currentUrl]);
+
+  const handleBack = useCallback(() => {
+    if (historyIdx > 0) {
+      const prev = historyIdx - 1;
+      setHistoryIdx(prev);
+      setCurrentUrl(history[prev]);
+      if (iframeRef.current) iframeRef.current.src = history[prev];
+    }
+  }, [history, historyIdx]);
+
+  const handleForward = useCallback(() => {
+    if (historyIdx < history.length - 1) {
+      const next = historyIdx + 1;
+      setHistoryIdx(next);
+      setCurrentUrl(history[next]);
+      if (iframeRef.current) iframeRef.current.src = history[next];
+    }
+  }, [history, historyIdx]);
+
+  // Track same-origin iframe navigation via load events
+  const handleIframeLoad = useCallback(() => {
+    try {
+      const loc = iframeRef.current?.contentWindow?.location.pathname;
+      if (loc && loc !== currentUrl) {
+        const next = history.slice(0, historyIdx + 1);
+        next.push(loc);
+        setHistory(next);
+        setHistoryIdx(next.length - 1);
+        setCurrentUrl(loc);
+      }
+    } catch {
+      // cross-origin — ignore
+    }
+  }, [currentUrl, history, historyIdx]);
+
   if (status === "succeeded" && deploymentId) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-2">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            <span className="text-xs font-medium text-neutral-400">Live preview</span>
-          </div>
-          <a
-            href={`/env/${deploymentId}/`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
-          >
-            Open ↗
-          </a>
-        </div>
+        <UrlBar
+          url={currentUrl}
+          onNavigate={navigateTo}
+          onRefresh={handleRefresh}
+          onBack={handleBack}
+          onForward={handleForward}
+          canGoBack={historyIdx > 0}
+          canGoForward={historyIdx < history.length - 1}
+        />
         <iframe
-          src={`/env/${deploymentId}/`}
+          ref={iframeRef}
+          src={baseUrl}
+          onLoad={handleIframeLoad}
           className="flex-1 bg-white"
           title="Live preview"
         />
