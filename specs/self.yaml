@@ -183,6 +183,7 @@ entities:
       - { name: "subdomain", type: "string", required: true, unique: true }
       - { name: "provider",  type: "string", required: true }
       - { name: "port",      type: "int",    required: true }
+      - { name: "pid",       type: "int",    required: false }
       - { name: "active",    type: "bool",   required: true }
       - name: "project_id"
         type: "uuid"

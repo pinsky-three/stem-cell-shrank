@@ -425,7 +425,8 @@ async fn spawn_and_serve(
                         flush_logs(pool, job_id, &log_buf).await;
                     }
 
-                    if let Err(e) = create_deployment(pool, job_id, project_id, port).await {
+                    let child_pid = child.id().map(|p| p as i32);
+                    if let Err(e) = create_deployment(pool, job_id, project_id, port, child_pid).await {
                         tracing::error!(%job_id, error = %e, "failed to create deployment");
                         let _ = child.kill().await;
                         return Err(e);
@@ -537,6 +538,7 @@ async fn create_deployment(
     job_id: uuid::Uuid,
     project_id: uuid::Uuid,
     port: u16,
+    pid: Option<i32>,
 ) -> Result<(), String> {
     let deployment_id = uuid::Uuid::new_v4();
     let subdomain = format!("env-{}", &job_id.to_string()[..8]);
@@ -544,14 +546,15 @@ async fn create_deployment(
 
     sqlx::query(
         "INSERT INTO deployments \
-             (id, status, url, subdomain, provider, port, active, \
+             (id, status, url, subdomain, provider, port, pid, active, \
               project_id, build_job_id, created_at, updated_at) \
-         VALUES ($1, 'running', $2, $3, 'local', $4, true, $5, $6, NOW(), NOW())",
+         VALUES ($1, 'running', $2, $3, 'local', $4, $5, true, $6, $7, NOW(), NOW())",
     )
     .bind(deployment_id)
     .bind(&url)
     .bind(&subdomain)
     .bind(port as i32)
+    .bind(pid)
     .bind(project_id)
     .bind(job_id)
     .execute(pool)
