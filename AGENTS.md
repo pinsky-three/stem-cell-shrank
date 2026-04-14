@@ -10,6 +10,30 @@ handful of frontend pages.
 The repo will be cloned by SpawnEnvironment as the default template — it must
 stay small, boot fast, and compile cleanly.
 
+## Hosted build and preview (OpenCode / app builder)
+
+When this template is used inside **Stem Cell** or another host that runs
+OpenCode against the checkout, lifecycle is **split**:
+
+- **OpenCode** edits the project on disk.
+- A **separate host-managed process** runs `mise run dev` (or equivalent) for
+  the live preview.
+
+**Agent rules in that environment:**
+
+- **Make code changes only** — migrations, specs, frontend, Rust as the task
+  requires. Do not manage preview or long-running dev lifecycle.
+- **Do not start dev servers** (`mise run dev`, `mise run frontend:dev`, or
+  similar) or assume a **localhost preview URL** — the host owns ports, URLs,
+  and restart behavior after edits.
+- Non-server verification is fine when useful: `mise run check`, `mise run test`,
+  `cargo run -p systems-codegen`, etc.
+
+The server injects a default OpenCode **system** prompt with the same
+constraints. Override with `STEM_CELL_OPENCODE_SYSTEM_PROMPT`: a non-empty value
+replaces the default entirely; a **whitespace-only** value disables the system
+message.
+
 ## Development priority order
 
 Follow this sequence strictly. **Do not jump ahead.**
@@ -17,9 +41,9 @@ Follow this sequence strictly. **Do not jump ahead.**
 ### 1. Frontend first
 
 Start every feature by building or changing the **user-facing pages**.
-The frontend is cheap to iterate on (Astro + Tailwind, hot-reload via
-`mise run frontend:dev`) and gives the user something to validate visually
-before any backend work.
+The frontend is cheap to iterate on (Astro + Tailwind; local hot-reload via
+`mise run frontend:dev` when you are not in a host-managed session) and gives
+the user something to validate visually before any backend work.
 
 **Editable frontend surface:**
 
@@ -36,7 +60,11 @@ them; they are overwritten on build.
 
 **What to do:**
 - Create or edit `.astro` pages and React components.
-- Use `mise run frontend:dev` for hot-reload (no backend needed for layout work).
+- **Local / interactive dev:** you may use `mise run frontend:dev` for hot-reload
+  (no backend needed for layout work).
+- **Host-managed OpenCode sessions:** do not start dev or preview processes; edit
+  files and rely on the host’s preview. Prefer static review plus `mise run check`
+  when you need compile feedback.
 - Show the user the result and get approval before touching specs or Rust.
 
 ### 2. Specs second (only after frontend is validated)
@@ -100,9 +128,9 @@ requires changes here, **STOP and explain** what's needed before proceeding.
 
 | Task | Command |
 |---|---|
-| Frontend dev (hot-reload) | `mise run frontend:dev` |
+| Frontend dev (hot-reload, **local only**) | `mise run frontend:dev` |
 | Run codegen | `cargo run -p systems-codegen` |
-| Dev server (backend + frontend) | `mise run dev` |
+| Full stack dev server (**local only**; host runs this in managed preview) | `mise run dev` |
 | Type-check only | `mise run check` |
 | Clippy | `mise run lint` |
 | Tests | `mise run test` |
