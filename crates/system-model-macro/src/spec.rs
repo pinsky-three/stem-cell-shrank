@@ -601,6 +601,6 @@ systems:
         let spec: SystemsSpec = serde_yaml::from_str(&yaml).unwrap();
         assert_eq!(spec.version, 1);
         assert_eq!(spec.integrations.len(), 0);
-        assert_eq!(spec.systems.len(), 1);
+        assert_eq!(spec.systems.len(), 3);
     }
 }

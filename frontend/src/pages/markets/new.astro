@@ -1,0 +1,153 @@
+---
+import Base from "../../layouts/Base.astro";
+---
+
+<Base title="Crear Mercado" description="Crea tu propio mercado de predicciones">
+  <main class="min-h-[calc(100vh-4rem)] bg-neutral-950">
+    <div class="mx-auto max-w-3xl px-6 py-12">
+      <!-- Header -->
+      <div class="mb-8">
+        <nav class="mb-4 flex items-center gap-2 text-sm text-neutral-500">
+          <a href="/" class="hover:text-white">Inicio</a>
+          <span>/</span>
+          <span class="text-white">Crear Mercado</span>
+        </nav>
+        <h1 class="text-3xl font-bold text-white">Crear Nuevo Mercado</h1>
+        <p class="mt-2 text-neutral-400">Crea un mercado de predicciones sobre cualquier tema. Otros usuarios podrán apostar en el resultado.</p>
+      </div>
+
+      <!-- Form -->
+      <form class="space-y-8">
+        <!-- Basic Info -->
+        <div class="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+          <h2 class="mb-6 text-lg font-semibold text-white">Información Básica</h2>
+          
+          <div class="space-y-5">
+            <div>
+              <label class="mb-2 block text-sm font-medium text-neutral-300">Pregunta del mercado *</label>
+              <input type="text" placeholder="¿Sucedera X antes de Y?" class="w-full rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-3 text-white placeholder-neutral-500 focus:border-red-500 focus:outline-none" />
+              <p class="mt-2 text-xs text-neutral-500">Formula una pregunta clara y binaria (sí/no) o de múltiples opciones.</p>
+            </div>
+
+            <div>
+              <label class="mb-2 block text-sm font-medium text-neutral-300">Descripción *</label>
+              <textarea rows="3" placeholder="Describe las condiciones exactas para resolver este mercado..." class="w-full rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-3 text-white placeholder-neutral-500 focus:border-red-500 focus:outline-none"></textarea>
+            </div>
+
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="mb-2 block text-sm font-medium text-neutral-300">Categoría *</label>
+                <select class="w-full rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-3 text-white focus:border-red-500 focus:outline-none">
+                  <option value="">Seleccionar...</option>
+                  <option value="politica">Política</option>
+                  <option value="deportes">Deportes</option>
+                  <option value="economia">Economía</option>
+                  <option value="entretenimiento">Entretenimiento</option>
+                  <option value="crypto">Crypto</option>
+                  <option value="actualidad">Actualidad</option>
+                </select>
+              </div>
+              <div>
+                <label class="mb-2 block text-sm font-medium text-neutral-300">Fecha de resolución *</label>
+                <input type="date" class="w-full rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-3 text-white focus:border-red-500 focus:outline-none" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Outcomes -->
+        <div class="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+          <div class="mb-6 flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-white">Opciones de resultado</h2>
+            <button type="button" class="rounded-lg bg-neutral-800 px-3 py-1.5 text-sm text-neutral-400 hover:bg-neutral-700 hover:text-white">
+              + Agregar opción
+            </button>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Outcome 1 -->
+            <div class="flex items-center gap-4">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/20 text-green-400">A</div>
+              <input type="text" value="Sí" class="flex-1 rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-2.5 text-white focus:border-red-500 focus:outline-none" />
+              <button type="button" class="text-neutral-600 hover:text-red-400">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+
+            <!-- Outcome 2 -->
+            <div class="flex items-center gap-4">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20 text-red-400">B</div>
+              <input type="text" value="No" class="flex-1 rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-2.5 text-white focus:border-red-500 focus:outline-none" />
+              <button type="button" class="text-neutral-600 hover:text-red-400">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Liquidity -->
+        <div class="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+          <h2 class="mb-6 text-lg font-semibold text-white">Liquidez Inicial</h2>
+          
+          <div class="mb-5 rounded-xl bg-neutral-800/50 p-4">
+            <p class="text-sm text-neutral-400">
+              La liquidez determina qué tan fácil es negociar en tu mercado. Recomendamos al menos S/ 100 para mercados activos.
+            </p>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="mb-2 block text-sm font-medium text-neutral-300">Liquidez a aportar (SOL) *</label>
+              <div class="relative">
+                <input type="number" value="100" min="10" class="w-full rounded-xl border border-neutral-700 bg-neutral-800 py-3 px-4 text-white focus:border-red-500 focus:outline-none" />
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500">SOL</span>
+              </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="rounded-xl border border-neutral-700 bg-neutral-800/50 p-4">
+                <p class="text-xs text-neutral-500">Liquidez del mercado</p>
+                <p class="mt-1 text-xl font-bold text-white">S/ 200</p>
+              </div>
+              <div class="rounded-xl border border-neutral-700 bg-neutral-800/50 p-4">
+                <p class="text-xs text-neutral-500">Tus shares tras resolver</p>
+                <p class="mt-1 text-xl font-bold text-green-400">~100</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rules -->
+        <div class="rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+          <h2 class="mb-6 text-lg font-semibold text-white">Reglas de Resolución</h2>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="mb-2 block text-sm font-medium text-neutral-300">Fuente de resolución</label>
+              <input type="text" placeholder="ej: Resultado oficial del INE" class="w-full rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-3 text-white placeholder-neutral-500 focus:border-red-500 focus:outline-none" />
+            </div>
+
+            <div>
+              <label class="mb-2 block text-sm font-medium text-neutral-300">Condiciones adicionales</label>
+              <textarea rows="3" placeholder="Especifica cualquier condición especial para la resolución..." class="w-full rounded-xl border border-neutral-700 bg-neutral-800 px-4 py-3 text-white placeholder-neutral-500 focus:border-red-500 focus:outline-none"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex items-center justify-between">
+          <p class="text-sm text-neutral-500">
+            Al crear este mercado, aceptas nuestras <a href="#" class="text-red-400 hover:underline">condiciones de uso</a>.
+          </p>
+          <button type="submit" class="rounded-xl bg-red-600 px-8 py-3 font-semibold text-white shadow-lg shadow-red-600/30 transition hover:bg-red-500">
+            Crear Mercado
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</Base>

@@ -28,6 +28,21 @@ import Base from "../../layouts/Base.astro";
         <p id="count-memberships" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
         <p class="mt-1 text-xs text-neutral-500">/admin/memberships</p>
       </a>
+      <a href="/admin/markets" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">Market</h3>
+        <p id="count-markets" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
+        <p class="mt-1 text-xs text-neutral-500">/admin/markets</p>
+      </a>
+      <a href="/admin/outcomes" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">Outcome</h3>
+        <p id="count-outcomes" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
+        <p class="mt-1 text-xs text-neutral-500">/admin/outcomes</p>
+      </a>
+      <a href="/admin/positions" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-indigo-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">Position</h3>
+        <p id="count-positions" class="mt-2 text-2xl font-bold text-indigo-400">...</p>
+        <p class="mt-1 text-xs text-neutral-500">/admin/positions</p>
+      </a>
     </div>
 
     <h2 class="mt-14 text-xl font-bold tracking-tight text-neutral-300">Systems</h2>
@@ -37,6 +52,16 @@ import Base from "../../layouts/Base.astro";
         <h3 class="text-lg font-semibold">InviteMember</h3>
         <p class="mt-2 text-sm text-neutral-400">Adds a user to an organization with a given role</p>
         <p class="mt-2 text-xs text-neutral-500">3 inputs &middot; POST /api/systems/invite_member</p>
+      </a>
+      <a href="/admin/systems/create_market" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">CreateMarket</h3>
+        <p class="mt-2 text-sm text-neutral-400">Creates a new prediction market with outcomes</p>
+        <p class="mt-2 text-xs text-neutral-500">6 inputs &middot; POST /api/systems/create_market</p>
+      </a>
+      <a href="/admin/systems/place_trade" class="group rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 transition hover:border-emerald-600/40 hover:bg-neutral-900">
+        <h3 class="text-lg font-semibold">PlaceTrade</h3>
+        <p class="mt-2 text-sm text-neutral-400">Places a trade on a market outcome</p>
+        <p class="mt-2 text-xs text-neutral-500">5 inputs &middot; POST /api/systems/place_trade</p>
       </a>
     </div>
   </div>
@@ -56,6 +81,21 @@ import Base from "../../layouts/Base.astro";
       document.getElementById('count-memberships').textContent=d.length+' records';
     }).catch(()=>{
       document.getElementById('count-memberships').textContent='--';
+    });
+    fetch('/api/markets').then(r=>r.json()).then(d=>{
+      document.getElementById('count-markets').textContent=d.length+' records';
+    }).catch(()=>{
+      document.getElementById('count-markets').textContent='--';
+    });
+    fetch('/api/outcomes').then(r=>r.json()).then(d=>{
+      document.getElementById('count-outcomes').textContent=d.length+' records';
+    }).catch(()=>{
+      document.getElementById('count-outcomes').textContent='--';
+    });
+    fetch('/api/positions').then(r=>r.json()).then(d=>{
+      document.getElementById('count-positions').textContent=d.length+' records';
+    }).catch(()=>{
+      document.getElementById('count-positions').textContent='--';
     });
   </script>
 </Base>

@@ -12,8 +12,6 @@ integrations: []
 
 systems:
 
-  # Example declarative system — demonstrates guards, loads, creates, and events.
-  # Replace or extend with your own workflows.
   - name: "InviteMember"
     description: "Adds a user to an organization with a given role"
     input:
@@ -59,3 +57,96 @@ systems:
 
     result:
       - { name: "membership", from: "membership" }
+
+  - name: "CreateMarket"
+    description: "Creates a new prediction market with outcomes"
+    input:
+      - { name: "creator_id",    type: "uuid",     required: true }
+      - { name: "question",      type: "string",   required: true }
+      - { name: "description",   type: "string",   required: true }
+      - { name: "category",      type: "string",   required: true }
+      - { name: "resolve_date",  type: "string",   required: true }
+      - { name: "outcomes",       type: "string",   required: true }
+    steps:
+      - kind: "load_one"
+        entity: "User"
+        by: "input.creator_id"
+        as: "creator"
+        not_found: "User not found"
+
+      - kind: "guard"
+        check: { field: "creator.active", equals: true }
+        error: "Creator account is not active"
+
+      - kind: "create"
+        entity: "Market"
+        set:
+          - { field: "slug",          from: "input.question" }
+          - { field: "question",      from: "input.question" }
+          - { field: "description",   from: "input.description" }
+          - { field: "category",      from: "input.category" }
+          - { field: "resolve_date",  from: "input.resolve_date" }
+          - { field: "active",        value: true }
+          - { field: "resolved",      value: false }
+          - { field: "winning_outcome", value: null }
+          - { field: "creator_id",     from: "input.creator_id" }
+        as: "market"
+
+      - kind: "emit_event"
+        event: "market_created"
+        payload:
+          - { field: "market_id",  from: "market.id" }
+          - { field: "creator_id", from: "creator.id" }
+
+    result:
+      - { name: "market", from: "market" }
+
+  - name: "PlaceTrade"
+    description: "Places a trade on a market outcome"
+    input:
+      - { name: "user_id",      type: "uuid",   required: true }
+      - { name: "market_id",    type: "uuid",   required: true }
+      - { name: "outcome_name", type: "string", required: true }
+      - { name: "shares",       type: "float",  required: true }
+      - { name: "price",        type: "float",  required: true }
+    steps:
+      - kind: "load_one"
+        entity: "User"
+        by: "input.user_id"
+        as: "user"
+        not_found: "User not found"
+
+      - kind: "load_one"
+        entity: "Market"
+        by: "input.market_id"
+        as: "market"
+        not_found: "Market not found"
+
+      - kind: "guard"
+        check: { field: "market.active", equals: true }
+        error: "Market is not active"
+
+      - kind: "guard"
+        check: { field: "market.resolved", equals: false }
+        error: "Market is already resolved"
+
+      - kind: "create"
+        entity: "Position"
+        set:
+          - { field: "outcome_name",  from: "input.outcome_name" }
+          - { field: "shares",        from: "input.shares" }
+          - { field: "avg_price",     from: "input.price" }
+          - { field: "realized_pnl",  value: 0.0 }
+          - { field: "market_id",     from: "input.market_id" }
+          - { field: "user_id",        from: "input.user_id" }
+        as: "position"
+
+      - kind: "emit_event"
+        event: "trade_placed"
+        payload:
+          - { field: "position_id", from: "position.id" }
+          - { field: "market_id",   from: "market.id" }
+          - { field: "user_id",     from: "user.id" }
+
+    result:
+      - { name: "position", from: "position" }

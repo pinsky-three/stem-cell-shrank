@@ -47,6 +47,52 @@ entities:
         required: true
         references: { entity: "User", field: "id" }
 
+  - name: "Market"
+    table: "markets"
+    id: { name: "id", type: "uuid" }
+    fields:
+      - { name: "slug",           type: "string", required: true, unique: true }
+      - { name: "question",       type: "string", required: true }
+      - { name: "description",    type: "text",   required: true }
+      - { name: "category",       type: "string", required: true }
+      - { name: "resolve_date",   type: "string", required: true }
+      - { name: "active",         type: "bool",   required: true }
+      - { name: "resolved",       type: "bool",   required: true }
+      - { name: "winning_outcome",type: "string", required: false }
+      - name: "creator_id"
+        type: "uuid"
+        required: true
+        references: { entity: "User", field: "id" }
+
+  - name: "Outcome"
+    table: "outcomes"
+    id: { name: "id", type: "uuid" }
+    fields:
+      - { name: "name",        type: "string", required: true }
+      - { name: "price",       type: "float",  required: true }
+      - { name: "shares",      type: "float",  required: true }
+      - name: "market_id"
+        type: "uuid"
+        required: true
+        references: { entity: "Market", field: "id" }
+
+  - name: "Position"
+    table: "positions"
+    id: { name: "id", type: "uuid" }
+    fields:
+      - { name: "outcome_name",  type: "string", required: true }
+      - { name: "shares",        type: "float",   required: true }
+      - { name: "avg_price",     type: "float",   required: true }
+      - { name: "realized_pnl",  type: "float",   required: true }
+      - name: "market_id"
+        type: "uuid"
+        required: true
+        references: { entity: "Market", field: "id" }
+      - name: "user_id"
+        type: "uuid"
+        required: true
+        references: { entity: "User", field: "id" }
+
 # ────────────────────────────────────────────────────────────────
 # Relations
 # ────────────────────────────────────────────────────────────────
@@ -57,3 +103,12 @@ relations:
   - { name: "memberships", kind: "has_many",    source: "User",         target: "Membership", foreign_key: "user_id" }
   - { name: "org",         kind: "belongs_to",  source: "Membership",   target: "Organization", foreign_key: "org_id" }
   - { name: "user",        kind: "belongs_to",  source: "Membership",   target: "User",         foreign_key: "user_id" }
+
+  - { name: "outcomes",    kind: "has_many",    source: "Market",       target: "Outcome",     foreign_key: "market_id" }
+  - { name: "market",      kind: "belongs_to",   source: "Outcome",     target: "Market",       foreign_key: "market_id" }
+  - { name: "creator",    kind: "belongs_to",   source: "Market",      target: "User",         foreign_key: "creator_id" }
+
+  - { name: "positions",  kind: "has_many",     source: "Market",      target: "Position",    foreign_key: "market_id" }
+  - { name: "positions",  kind: "has_many",     source: "User",        target: "Position",     foreign_key: "user_id" }
+  - { name: "market",      kind: "belongs_to",  source: "Position",    target: "Market",      foreign_key: "market_id" }
+  - { name: "user",        kind: "belongs_to",  source: "Position",    target: "User",        foreign_key: "user_id" }
