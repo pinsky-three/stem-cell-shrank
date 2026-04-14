@@ -1,0 +1,29 @@
+---
+import "../../styles/global.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Project — Stem Cell</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="theme-color" content="#0a0a0b" />
+  </head>
+  <body class="h-screen overflow-hidden bg-neutral-950 text-neutral-100 antialiased">
+    <div id="project-root" class="h-full"></div>
+
+    <script>
+      import React from "react";
+      import { createRoot } from "react-dom/client";
+      import ProjectView from "../../components/ProjectView";
+
+      const segments = window.location.pathname.split("/").filter(Boolean);
+      const projectId = segments[1] || "";
+
+      const root = document.getElementById("project-root")!;
+      createRoot(root).render(React.createElement(ProjectView, { projectId }));
+    </script>
+  </body>
+</html>

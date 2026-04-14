@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use axum::Router;
 use axum::routing::get;
+use axum::response::IntoResponse;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::services::ServeDir;
@@ -121,12 +122,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .allow_headers(Any)
     };
 
+    // SPA fallback: /project/{uuid} → serve the static project page
+    let project_page = serve_dir.clone();
+    let spa_fallback = Router::new().route(
+        "/project/{id}",
+        get(move || async move {
+            let path = std::path::Path::new(&project_page).join("project/index.html");
+            match tokio::fs::read(path).await {
+                Ok(bytes) => axum::response::Html(bytes).into_response(),
+                Err(_) => axum::http::StatusCode::NOT_FOUND.into_response(),
+            }
+        }),
+    );
+
     let app = Router::new()
         .merge(api)
         .merge(system_routes)
         .merge(auth_routes)
         .merge(health_routes)
         .merge(env_proxy)
+        .merge(spa_fallback)
         .merge(Scalar::with_url("/api/docs", openapi))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
