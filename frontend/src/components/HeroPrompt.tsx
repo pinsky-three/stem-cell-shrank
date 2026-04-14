@@ -5,7 +5,7 @@ const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 const POLL_INTERVAL_MS = 2_000;
-const TERMINAL_STATUSES = new Set(["succeeded", "failed"]);
+const TERMINAL_STATUSES = new Set(["succeeded", "failed", "stopped"]);
 
 interface SpawnResult {
   project_id: string;
@@ -19,6 +19,7 @@ interface BuildJobStatus {
   error_message: string;
   duration_ms: number;
   logs: string;
+  deployment_id: string | null;
 }
 
 function statusLabel(status: string) {
@@ -26,9 +27,11 @@ function statusLabel(status: string) {
     case "running":
       return "Building…";
     case "succeeded":
-      return "Build succeeded";
+      return "Live";
     case "failed":
       return "Build failed";
+    case "stopped":
+      return "Stopped";
     case "queued":
       return "Queued";
     default:
@@ -39,9 +42,11 @@ function statusLabel(status: string) {
 function statusClasses(status: string) {
   switch (status) {
     case "succeeded":
-      return "border-green-700/30 bg-green-950/20 text-green-300";
+      return "border-emerald-700/30 bg-emerald-950/20 text-emerald-300";
     case "failed":
       return "border-red-700/30 bg-red-950/20 text-red-300";
+    case "stopped":
+      return "border-neutral-700/30 bg-neutral-950/20 text-neutral-400";
     default:
       return "border-indigo-700/30 bg-indigo-950/20 text-indigo-300";
   }
@@ -176,6 +181,32 @@ export default function HeroPrompt() {
           )}
 
           {jobStatus?.logs && <LogViewer logs={jobStatus.logs} />}
+        </div>
+      )}
+
+      {jobStatus?.status === "succeeded" && jobStatus.deployment_id && (
+        <div className="overflow-hidden rounded-xl border border-emerald-700/30 bg-neutral-950 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-2">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="text-xs font-medium text-neutral-300">
+                Live environment
+              </span>
+            </div>
+            <a
+              href={`/env/${jobStatus.deployment_id}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+            >
+              Open in new tab ↗
+            </a>
+          </div>
+          <iframe
+            src={`/env/${jobStatus.deployment_id}/`}
+            className="h-[600px] w-full bg-white"
+            title="Spawned environment"
+          />
         </div>
       )}
 

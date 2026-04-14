@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 // ── Top-level spec ──────────────────────────────────────────────────────
 
@@ -213,8 +213,15 @@ pub struct FieldMapping {
     pub field: String,
     #[serde(default)]
     pub from: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "preserve_yaml_null")]
     pub value: Option<serde_yaml::Value>,
+}
+
+fn preserve_yaml_null<'de, D>(deserializer: D) -> Result<Option<serde_yaml::Value>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    serde_yaml::Value::deserialize(deserializer).map(Some)
 }
 
 /// Guard / branch condition.

@@ -1,5 +1,5 @@
 use stem_cell::system_api;
-use stem_cell::{integrations, migrate, resource_api, systems};
+use stem_cell::{integrations, migrate, proxy, resource_api, systems};
 
 mod auth;
 mod email;
@@ -96,7 +96,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         systems::AppSystems,
     );
 
-    // Health endpoints use PgPool state
+    // Reverse proxy to spawned child environments
+    let env_proxy = proxy::router(pool.clone());
+
+    // Health endpoints use PgPool state (consumes pool — must be last clone)
     let health_routes = Router::new()
         .route("/healthz", get(resource_api::healthz))
         .route("/readyz", get(resource_api::readyz))
@@ -123,6 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(system_routes)
         .merge(auth_routes)
         .merge(health_routes)
+        .merge(env_proxy)
         .merge(Scalar::with_url("/api/docs", openapi))
         .layer(cors)
         .layer(TraceLayer::new_for_http())

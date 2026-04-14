@@ -155,6 +155,7 @@ systems:
           - { field: "error_message",  value: "" }
           - { field: "duration_ms",    value: 0 }
           - { field: "logs",           value: "" }
+          - { field: "deployment_id",  value: null }
           - { field: "project_id",     from: "project.id" }
           - { field: "message_id",     from: "message.id" }
         as: "build_job"
@@ -231,6 +232,7 @@ systems:
           - { field: "url",          from: "deploy_result.url" }
           - { field: "subdomain",    from: "input.subdomain" }
           - { field: "provider",     from: "input.provider" }
+          - { field: "port",         value: 0 }
           - { field: "active",       value: true }
           - { field: "project_id",   from: "input.project_id" }
           - { field: "build_job_id", from: "input.build_job_id" }

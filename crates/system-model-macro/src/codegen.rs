@@ -1099,6 +1099,9 @@ fn generate_create(step: &CreateStep, bindings: &mut HashMap<String, BindingKind
                     let val = path_to_cloned_tokens(path);
                     quote! { #field: #val }
                 }
+                (_, Some(val)) if val.is_null() => {
+                    quote! { #field: None }
+                }
                 (_, Some(val)) => {
                     let val = yaml_value_to_assignment_tokens(val);
                     quote! { #field: #val }

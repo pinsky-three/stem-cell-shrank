@@ -145,6 +145,7 @@ entities:
       - { name: "error_message",  type: "string", required: true }
       - { name: "duration_ms",    type: "bigint", required: true }
       - { name: "logs",           type: "text",   required: true }
+      - { name: "deployment_id", type: "uuid", required: false }
       - name: "project_id"
         type: "uuid"
         required: true
@@ -181,6 +182,7 @@ entities:
       - { name: "url",       type: "string", required: true }
       - { name: "subdomain", type: "string", required: true, unique: true }
       - { name: "provider",  type: "string", required: true }
+      - { name: "port",      type: "int",    required: true }
       - { name: "active",    type: "bool",   required: true }
       - name: "project_id"
         type: "uuid"
