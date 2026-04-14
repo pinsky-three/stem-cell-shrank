@@ -207,7 +207,18 @@ function UrlBar({
         className={navBtnClass(canGoBack)}
         title="Back"
       >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5"/></svg>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M10 3L5 8l5 5" />
+        </svg>
       </button>
       <button
         onClick={onForward}
@@ -215,19 +226,52 @@ function UrlBar({
         className={navBtnClass(canGoForward)}
         title="Forward"
       >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3l5 5-5 5"/></svg>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M6 3l5 5-5 5" />
+        </svg>
       </button>
       <button
         onClick={onRefresh}
         className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition"
         title="Refresh"
       >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 1.5v4h4"/><path d="M2.3 9.5a6 6 0 1 0 .8-4L1.5 5.5"/></svg>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M1.5 1.5v4h4" />
+          <path d="M2.3 9.5a6 6 0 1 0 .8-4L1.5 5.5" />
+        </svg>
       </button>
 
       <div className="relative flex flex-1 items-center">
         <div className="pointer-events-none absolute left-2.5 text-neutral-600">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v0M8 7v4"/></svg>
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="8" cy="8" r="5.5" />
+            <path d="M8 5v0M8 7v4" />
+          </svg>
         </div>
         <input
           ref={inputRef}
@@ -259,7 +303,20 @@ function UrlBar({
         className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 transition"
         title="Open in new tab"
       >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2h5v5"/><path d="M14 2L7 9"/><path d="M13 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4"/></svg>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M9 2h5v5" />
+          <path d="M14 2L7 9" />
+          <path d="M13 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4" />
+        </svg>
       </a>
     </div>
   );
@@ -285,7 +342,8 @@ function PreviewPanel({
   useEffect(() => {
     if (!baseUrl) return;
     const restored = getHostParam("preview");
-    const initial = restored && restored.startsWith(baseUrl) ? restored : baseUrl;
+    const initial =
+      restored && restored.startsWith(baseUrl) ? restored : baseUrl;
     setCurrentUrl(initial);
     setHistory([initial]);
     setHistoryIdx(0);
@@ -417,7 +475,9 @@ function StatusBar({ job }: { job: BuildJob | null }) {
       {job.error_message && (
         <>
           <span className="text-neutral-700">|</span>
-          <span className="text-red-400 truncate max-w-xs">{job.error_message}</span>
+          <span className="text-red-400 truncate max-w-xs">
+            {job.error_message}
+          </span>
         </>
       )}
     </div>
@@ -484,7 +544,9 @@ export default function ProjectView({ projectId }: { projectId: string }) {
 
     (async () => {
       try {
-        const res = await fetch(`/api/build_jobs?sort=created_at&order=desc&limit=1&project_id=${projectId}`);
+        const res = await fetch(
+          `/api/build_jobs?sort=created_at&order=desc&limit=1&project_id=${projectId}`,
+        );
         if (!res.ok) return;
         const jobs: BuildJob[] = await res.json();
         if (jobs.length > 0) {
@@ -505,7 +567,9 @@ export default function ProjectView({ projectId }: { projectId: string }) {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`/api/messages?sort=created_at&order=asc&limit=100&conversation_id=${projectId}`);
+        const res = await fetch(
+          `/api/messages?sort=created_at&order=asc&limit=100&conversation_id=${projectId}`,
+        );
         if (!res.ok) return;
         const msgs: Message[] = await res.json();
         if (msgs.length > 0) setMessages(msgs);
