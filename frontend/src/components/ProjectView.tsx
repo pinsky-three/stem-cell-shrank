@@ -4,6 +4,17 @@ import { PromptInputBox } from "./ui/ai-prompt-box";
 const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
+function getHostParam(key: string): string | null {
+  return new URLSearchParams(window.location.search).get(key);
+}
+
+function setHostParam(key: string, value: string | null) {
+  const url = new URL(window.location.href);
+  if (value) url.searchParams.set(key, value);
+  else url.searchParams.delete(key);
+  window.history.replaceState(null, "", url.toString());
+}
+
 const POLL_INTERVAL_MS = 2_000;
 const TERMINAL_STATUSES = new Set(["succeeded", "failed", "stopped"]);
 
@@ -270,14 +281,22 @@ function PreviewPanel({
 
   const baseUrl = deploymentId ? `/env/${deploymentId}/` : "";
 
-  // Initialise when deployment becomes available
+  // Initialise when deployment becomes available; restore from ?preview= if present
   useEffect(() => {
-    if (baseUrl) {
-      setCurrentUrl(baseUrl);
-      setHistory([baseUrl]);
-      setHistoryIdx(0);
-    }
+    if (!baseUrl) return;
+    const restored = getHostParam("preview");
+    const initial = restored && restored.startsWith(baseUrl) ? restored : baseUrl;
+    setCurrentUrl(initial);
+    setHistory([initial]);
+    setHistoryIdx(0);
   }, [baseUrl]);
+
+  // Persist preview path in host URL whenever it changes
+  useEffect(() => {
+    if (currentUrl && baseUrl) {
+      setHostParam("preview", currentUrl === baseUrl ? null : currentUrl);
+    }
+  }, [currentUrl, baseUrl]);
 
   const navigateTo = useCallback(
     (url: string) => {
@@ -345,7 +364,7 @@ function PreviewPanel({
         />
         <iframe
           ref={iframeRef}
-          src={baseUrl}
+          src={currentUrl || baseUrl}
           onLoad={handleIframeLoad}
           className="flex-1 bg-white"
           title="Live preview"
