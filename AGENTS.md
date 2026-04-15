@@ -36,7 +36,9 @@ message.
 
 ## Development priority order
 
-Follow this sequence strictly. **Do not jump ahead.**
+Each stage has a **hard gate**. You MUST complete a stage and receive explicit
+user approval before advancing to the next one. Combining stages (e.g. creating
+pages and editing specs in the same turn) is **forbidden**.
 
 ### 1. Frontend first
 
@@ -60,17 +62,29 @@ them; they are overwritten on build.
 
 **What to do:**
 - Create or edit `.astro` pages and React components.
+- Use mock/static data in the frontend. Do not worry about API endpoints yet.
 - **Local / interactive dev:** you may use `mise run frontend:dev` for hot-reload
   (no backend needed for layout work).
 - **Host-managed OpenCode sessions:** do not start dev or preview processes; edit
-  files and rely on the host’s preview. Prefer static review plus `mise run check`
+  files and rely on the host's preview. Prefer static review plus `mise run check`
   when you need compile feedback.
-- Show the user the result and get approval before touching specs or Rust.
 
-### 2. Specs second (only after frontend is validated)
+**STOP after this stage.** Present the result to the user and explicitly ask for
+approval before proceeding to stage 2.
 
-Once the user has approved the frontend, update the data model and workflows
-to support it.
+**Off-limits during stage 1** (do NOT read, edit, or run codegen against these):
+- `specs/self.yaml`
+- `specs/systems.yaml`
+- `crates/` (any Rust code)
+- `cargo run -p systems-codegen`
+
+### 2. Specs second — ONLY after user approves the frontend
+
+Do **not** enter this stage until the user has reviewed the frontend and said to
+proceed. "Looks good", "approved", "next", or similar explicit confirmation is
+required.
+
+Once approved, update the data model and workflows to support the frontend.
 
 **Editable spec surface:**
 
@@ -92,7 +106,10 @@ This regenerates:
 - System executors, DTOs, traits, contract tests (from `systems.yaml`)
 - Admin pages under `frontend/src/pages/admin/` (from both specs)
 
-### 3. Custom Rust last (only when needed)
+**STOP after this stage.** Report codegen and test results to the user. Wait for
+approval before writing any custom Rust.
+
+### 3. Custom Rust last — ONLY when needed and approved
 
 Write hand-implemented Rust only when:
 - A system uses `mode: "contract"` and needs a body.
