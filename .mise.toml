@@ -1,6 +1,7 @@
 [tools]
 rust = "1.94.1"
 node = "22.13.1"
+opencode = "latest"
 
 [env]
 _.file = ".env"
@@ -97,5 +98,6 @@ run = "npm install"
 
 [tasks."frontend:dev"]
 description = "Astro dev server with hot reload"
+depends = ["frontend:install"]
 dir = "frontend"
 run = "npm run dev"
